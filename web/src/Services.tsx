@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { Button } from "@ui-sdk/react/button";
 import { Input } from "@ui-sdk/react/input";
 import {
@@ -6,9 +7,9 @@ import {
   SegmentedControlItem,
 } from "@ui-sdk/react/segmented-control";
 import { Toggle, ToggleIcon } from "@ui-sdk/react/toggle";
-import { ago, seconds, statusOf, type Service } from "./api";
+import { ago, lampTone, needsAttention, seconds, sinceText, statusOf, type Service } from "./api";
 import { LogView } from "./Logs";
-import { buttonClass, confirm, dotColor, sectionClass, textColor, useAct } from "./shared";
+import { Lamp, buttonClass, confirm, sectionClass, textColor, useAct } from "./shared";
 
 /** Groups come from the config, in the order they first appear. */
 const groupLabel = (g: string) => g.charAt(0).toUpperCase() + g.slice(1);
@@ -18,22 +19,36 @@ export type Only = "all" | "attention";
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
 
 export function Health({ services, compact }: { services: Service[]; compact?: boolean }) {
-  const tones = services.map((s) => statusOf(s).tone);
-  const attention = services.filter((_, i) => tones[i] === "warn" || tones[i] === "bad");
-  const running = tones.filter((t) => t === "good").length;
+  const tones = services.map(lampTone);
+  const attention = services.filter(needsAttention);
+  const running = services.filter((s) => statusOf(s).tone === "good").length;
   const stopped = services.filter((s) => s.disabled || (s.kind === "process" && !s.want)).length;
   const summary = [`${running} running`, stopped > 0 ? `${stopped} stopped` : ""]
     .filter(Boolean)
     .join(", ");
   const ok = attention.length === 0;
   return (
-    <header className={compact ? "px-1 pt-1 pb-3" : "px-1 pt-6 pb-5"}>
-      <h1
-        className={`${compact ? "text-[24px]" : "text-[34px]"} leading-[1.12] font-bold tracking-tight ${ok ? "text-good" : "text-bad"}`}
-      >
-        {ok ? "All good" : `${attention.length} need${attention.length === 1 ? "s" : ""} attention`}
+    <header className={compact ? "px-2 pt-1 pb-4" : "pt-6 pb-5"}>
+      <ul className="m-0 flex list-none flex-wrap gap-1 p-0" aria-label="Every service at a glance">
+        {services.map((s, i) => (
+          <li key={s.id}>
+            <a
+              href={`#/s/${s.id}`}
+              title={`${s.name}: ${statusOf(s).label}${s.errors > 0 ? `, ${plural(s.errors, "error")}` : ""}`}
+              aria-label={`${s.name}: ${statusOf(s).label}${s.errors > 0 ? `, ${plural(s.errors, "error")}` : ""}`}
+              className="grid size-8 place-items-center rounded-md border border-line bg-card hover:border-label"
+            >
+              <Lamp tone={tones[i]} busy={!!s.busy} />
+            </a>
+          </li>
+        ))}
+      </ul>
+      <h1 className={`title ${compact ? "mt-4 text-[30px]" : "mt-5 text-[52px]"}`}>
+        {ok
+          ? "All clear"
+          : `${attention.length} need${attention.length === 1 ? "s" : ""} attention`}
       </h1>
-      <p className="mt-1 text-[15px] text-label-2">
+      <p className={`mt-2 text-label-2 ${compact ? "text-[13px]" : "text-[17px]"}`}>
         {ok ? `${summary}.` : `${attention.map((s) => s.name).join(", ")}. ${summary}.`}
       </p>
     </header>
@@ -73,10 +88,14 @@ function Counts({ s }: { s: Service }) {
   return (
     <>
       {s.errors > 0 && (
-        <span className="font-semibold text-bad"> · {plural(s.errors, "error")}</span>
+        <span className="inline-flex items-center gap-1.5 font-semibold">
+          <Lamp tone="bad" small /> {plural(s.errors, "error")}
+        </span>
       )}
       {s.warnings > 0 && (
-        <span className="font-semibold text-warn"> · {plural(s.warnings, "warning")}</span>
+        <span className="inline-flex items-center gap-1.5 font-semibold">
+          <Lamp tone="warn" small /> {plural(s.warnings, "warning")}
+        </span>
       )}
     </>
   );
@@ -94,29 +113,40 @@ function Row({
   toggleStar: (id: string) => void;
 }) {
   const st = statusOf(s);
+  const quiet = st.tone === "good" || st.tone === "idle";
   return (
     <li
-      className={`flex items-center [&+&]:border-t-[0.5px] [&+&]:border-line ${selected ? "bg-muted" : ""}`}
+      className={`flex items-center border-t-[0.5px] border-line first:border-t-0 ${selected ? "bg-accent text-on-accent" : ""}`}
     >
       <a
-        className="flex min-h-[60px] min-w-0 flex-1 items-center gap-3 py-2.5 pr-1 pl-3.5 text-inherit no-underline active:bg-muted focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent lg:min-h-14"
+        className={`flex min-h-16 min-w-0 flex-1 items-center gap-3 py-2.5 pr-1 pl-3 text-inherit no-underline lg:min-h-12 lg:py-1.5 ${selected ? "" : "hover:bg-muted"}`}
         href={`#/s/${s.id}`}
         aria-current={selected ? "page" : undefined}
       >
-        <span className={`size-3 flex-none rounded-full ${dotColor[st.tone]}`} aria-hidden="true" />
-        <span className="flex min-w-0 flex-1 flex-col">
-          <span className="text-[17px] font-semibold lg:text-[16px]">{s.name}</span>
-          <span className="text-[15px] break-words text-label-2">
-            <span className={`font-semibold ${textColor[st.tone]}`}>{st.label}</span>
-            {s.kind !== "task" && !s.disabled && ` · ${ago(s.since)}`}
+        <Lamp tone={lampTone(s)} busy={!!s.busy} />
+        <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+          <span className="text-[17px] font-semibold lg:text-[14px]">{s.name}</span>
+          <span
+            className={`flex flex-wrap items-center gap-x-3 text-[15px] lg:text-[12px] ${selected ? "opacity-80" : "text-label-2"}`}
+          >
+            <span className={quiet || selected ? "" : `font-semibold ${textColor[st.tone]}`}>
+              {st.label}
+            </span>
             <Counts s={s} />
           </span>
         </span>
+        {s.kind !== "task" && !s.disabled && (
+          <span
+            className={`num text-[13px] lg:text-[12px] ${selected ? "opacity-80" : "text-label-2"}`}
+          >
+            {ago(s.since)}
+          </span>
+        )}
         <svg
-          className="flex-none text-label-2 lg:hidden"
+          className="flex-none opacity-60 lg:hidden"
           viewBox="0 0 24 24"
-          width="20"
-          height="20"
+          width="18"
+          height="18"
           fill="none"
           stroke="currentColor"
           strokeWidth="2"
@@ -128,7 +158,7 @@ function Row({
         </svg>
       </a>
       <Toggle
-        className="mr-1 size-11 flex-none border-0 bg-transparent text-label-2 data-pressed:text-warn"
+        className="mr-1 size-11 flex-none border-0 bg-transparent text-inherit opacity-60 data-pressed:text-warn data-pressed:opacity-100 lg:size-9"
         pressed={starred}
         onPressedChange={() => toggleStar(s.id)}
         aria-label={`Star ${s.name}`}
@@ -136,8 +166,8 @@ function Row({
         <ToggleIcon data-variant="fill">
           <svg
             viewBox="0 0 24 24"
-            width="20"
-            height="20"
+            width="18"
+            height="18"
             fill="none"
             stroke="currentColor"
             strokeWidth="1.8"
@@ -170,11 +200,7 @@ export function ServiceList({
   const q = query.trim().toLowerCase();
   const keep = (s: Service) => {
     if (q && !s.name.toLowerCase().includes(q)) return false;
-    if (only === "attention") {
-      const tone = statusOf(s).tone;
-      return tone === "warn" || tone === "bad";
-    }
-    return true;
+    return only === "attention" ? needsAttention(s) : true;
   };
   const visible = services.filter(keep);
   const sections: { id: string; label: string; items: Service[] }[] = [
@@ -188,7 +214,7 @@ export function ServiceList({
 
   if (sections.length === 0) {
     return (
-      <p className="mt-2.5 text-[15px] text-label-2">
+      <p className="mt-2.5 text-[15px] lg:mt-2 lg:text-[13px] text-label-2">
         {only === "attention" ? "Nothing needs attention." : "No service matches."}
       </p>
     );
@@ -197,8 +223,15 @@ export function ServiceList({
     <>
       {sections.map((section) => (
         <section key={section.id} aria-label={section.label}>
-          <h2 className={`${sectionClass} first:mt-0`}>{section.label}</h2>
-          <ul className="m-0 list-none overflow-hidden rounded-[14px] bg-card p-0">
+          <h2
+            className={`${sectionClass} flex items-baseline justify-between px-3 pt-6 pb-2 lg:pt-5 lg:pb-1.5`}
+          >
+            {section.label}
+            <span className="num text-[13px] font-normal text-label-2 lg:text-[12px]">
+              {section.items.length}
+            </span>
+          </h2>
+          <ul className="m-0 list-none border-t border-label p-0">
             {section.items.map((s) => (
               <Row
                 key={s.id}
@@ -221,145 +254,159 @@ function Actions({ s }: { s: Service }) {
     confirm({ title, message, label, agent });
   const stopped = s.kind === "process" && !s.want;
   const path = (what: string) => `services/${s.id}/${what}`;
+  const live = !s.disabled;
+
+  const secondary: ReactNode[] = [];
+  if (s.kind === "process" && live && !stopped) {
+    secondary.push(
+      <Button
+        key="stop"
+        className={buttonClass}
+        onClick={async () => {
+          if (
+            !(await ask(
+              `Stop ${s.name}?`,
+              "It stays stopped until you start it again.",
+              `Stop ${s.name}`,
+              `Stops ${s.name}`,
+            ))
+          )
+            return;
+          await act({
+            path: path("stop"),
+            doing: `Stopping ${s.name}`,
+            done: `${s.name} stopped`,
+          });
+        }}
+      >
+        Stop {s.name}
+      </Button>,
+    );
+  }
+  if (live) {
+    for (const b of s.buttons) {
+      secondary.push(
+        <Button
+          key={b.id}
+          className={buttonClass}
+          onClick={async () => {
+            if (
+              b.confirm &&
+              !(await ask(`${b.label}?`, b.confirm, b.label, `${b.label} on ${s.name}`))
+            )
+              return;
+            await act({
+              path: path(`buttons/${b.id}`),
+              doing: b.label,
+              done: `${b.label}: done`,
+            });
+          }}
+        >
+          {b.label}
+          <span className="sr-only"> for {s.name}</span>
+        </Button>,
+      );
+    }
+    for (const l of s.links) {
+      secondary.push(
+        <a
+          key={l.path}
+          className={`${buttonClass} btn text-accent no-underline focus-visible:outline-2 focus-visible:outline-accent`}
+          href={l.path.startsWith(":") ? `http://${location.hostname}${l.path}` : l.path}
+          target="_blank"
+          rel="noreferrer"
+        >
+          {l.label}
+        </a>,
+      );
+    }
+  }
+  if (s.disabled) {
+    secondary.push(
+      <Button
+        key="enable"
+        className={buttonClass}
+        onClick={() =>
+          act({ path: path("enable"), doing: `Enabling ${s.name}`, done: `${s.name} enabled` })
+        }
+      >
+        Enable {s.name}
+      </Button>,
+    );
+  }
+
   return (
-    <section aria-label={`${s.name} actions`}>
-      <h2 className={`${sectionClass} lg:mt-4`}>Actions</h2>
-      <div className="grid gap-2.5 lg:flex lg:flex-wrap">
-        {s.kind === "process" &&
-          !s.disabled &&
-          (stopped ? (
-            <Button
-              className={buttonClass}
-              data-variant="solid"
-              onClick={() =>
-                act({
+    <div className="flex flex-col gap-3" role="group" aria-label={`${s.name} actions`}>
+      <div className="flex flex-col gap-2.5 lg:flex-row lg:flex-nowrap lg:justify-end lg:gap-2">
+        {s.kind === "process" && live && (
+          <Button
+            className={buttonClass}
+            data-variant="solid"
+            onClick={async () => {
+              if (stopped) {
+                await act({
                   path: path("start"),
                   doing: `Starting ${s.name}`,
                   done: `${s.name} is starting`,
-                })
-              }
-            >
-              Start {s.name}
-            </Button>
-          ) : (
-            <>
-              <Button
-                className={buttonClass}
-                data-variant="solid"
-                onClick={async () => {
-                  if (
-                    !(await ask(
-                      `Restart ${s.name}?`,
-                      "It rebuilds first. If the build fails, the running version stays up.",
-                      `Restart ${s.name}`,
-                      `Rebuilds and restarts ${s.name}`,
-                    ))
-                  )
-                    return;
-                  await act({
-                    path: path("restart"),
-                    doing: `Restarting ${s.name}`,
-                    done: `${s.name} is restarting`,
-                  });
-                }}
-              >
-                Rebuild and restart
-              </Button>
-              <Button
-                className={buttonClass}
-                onClick={async () => {
-                  if (
-                    !(await ask(
-                      `Stop ${s.name}?`,
-                      "It stays stopped until you start it again.",
-                      `Stop ${s.name}`,
-                      `Stops ${s.name}`,
-                    ))
-                  )
-                    return;
-                  await act({
-                    path: path("stop"),
-                    doing: `Stopping ${s.name}`,
-                    done: `${s.name} stopped`,
-                  });
-                }}
-              >
-                Stop {s.name}
-              </Button>
-            </>
-          ))}
-        {!s.disabled &&
-          s.buttons.map((b) => (
-            <Button
-              key={b.id}
-              className={buttonClass}
-              onClick={async () => {
-                if (
-                  b.confirm &&
-                  !(await ask(`${b.label}?`, b.confirm, b.label, `${b.label} on ${s.name}`))
-                )
-                  return;
-                await act({
-                  path: path(`buttons/${b.id}`),
-                  doing: b.label,
-                  done: `${b.label}: done`,
                 });
-              }}
-            >
-              {b.label}
-              <span className="sr-only"> for {s.name}</span>
-            </Button>
-          ))}
-        {!s.disabled &&
-          s.links.map((l) => (
-            <a
-              key={l.path}
-              className="inline-flex min-h-[50px] w-full items-center justify-center rounded-xl border border-line bg-card px-4 text-[17px] font-semibold text-accent no-underline focus-visible:outline-2 focus-visible:outline-accent lg:min-h-10 lg:w-auto lg:text-[15px]"
-              href={l.path.startsWith(":") ? `http://${location.hostname}${l.path}` : l.path}
-              target="_blank"
-              rel="noreferrer"
-            >
-              {l.label}
-            </a>
-          ))}
-        {s.disabled ? (
-          <Button
-            className={buttonClass}
-            onClick={() =>
-              act({ path: path("enable"), doing: `Enabling ${s.name}`, done: `${s.name} enabled` })
-            }
-          >
-            Enable {s.name}
-          </Button>
-        ) : (
-          <Button
-            className={`${buttonClass} text-bad`}
-            onClick={async () => {
-              const note =
-                s.kind === "process"
-                  ? "It stops and stays off, even after the hub restarts."
-                  : "It stops being checked and its heartbeat stops, so whatever watches the heartbeat will alert.";
+                return;
+              }
               if (
-                !(await ask(`Disable ${s.name}?`, note, `Disable ${s.name}`, `Disables ${s.name}`))
+                !(await ask(
+                  `Restart ${s.name}?`,
+                  "It rebuilds first. If the build fails, the running version stays up.",
+                  `Restart ${s.name}`,
+                  `Rebuilds and restarts ${s.name}`,
+                ))
               )
                 return;
               await act({
-                path: path("disable"),
-                doing: `Disabling ${s.name}`,
-                done: `${s.name} disabled`,
+                path: path("restart"),
+                doing: `Restarting ${s.name}`,
+                done: `${s.name} is restarting`,
               });
             }}
           >
-            Disable {s.name}
+            {stopped ? `Start ${s.name}` : "Rebuild and restart"}
           </Button>
         )}
-        {s.busy && (
-          <p className="mt-2.5 text-[15px] text-label-2" role="status">
-            Running “{s.busy}”…
-          </p>
+        {secondary.length > 0 && <div className="grid gap-2.5 lg:contents">{secondary}</div>}
+        {live && (
+          <>
+            <Button
+              className={`${buttonClass} text-bad`}
+              onClick={async () => {
+                const note =
+                  s.kind === "process"
+                    ? "It stops and stays off, even after the hub restarts."
+                    : "It stops being checked and its heartbeat stops, so whatever watches the heartbeat will alert.";
+                if (
+                  !(await ask(
+                    `Disable ${s.name}?`,
+                    note,
+                    `Disable ${s.name}`,
+                    `Disables ${s.name}`,
+                  ))
+                )
+                  return;
+                await act({
+                  path: path("disable"),
+                  doing: `Disabling ${s.name}`,
+                  done: `${s.name} disabled`,
+                });
+              }}
+            >
+              Disable {s.name}
+            </Button>
+          </>
         )}
       </div>
-    </section>
+      {s.busy && (
+        <p className="m-0 text-[15px] text-label-2 lg:text-[13px]" role="status">
+          Running “{s.busy}”…
+        </p>
+      )}
+    </div>
   );
 }
 
@@ -369,7 +416,7 @@ export function Detail({ s, desktop }: { s: Service; services?: Service[]; deskt
     <div className={desktop ? "flex min-h-0 flex-1 flex-col" : ""}>
       {!desktop && (
         <a
-          className="-ml-1.5 inline-flex min-h-11 items-center gap-0.5 px-1.5 text-[17px] text-accent no-underline focus-visible:outline-2 focus-visible:outline-accent"
+          className="-ml-1.5 inline-flex min-h-11 items-center gap-0.5 px-1.5 text-[17px] no-underline"
           href="#/"
         >
           <svg
@@ -388,25 +435,33 @@ export function Detail({ s, desktop }: { s: Service; services?: Service[]; deskt
           Services
         </a>
       )}
-      <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)] lg:items-start lg:gap-6">
-        <div>
-          <h1 className="mb-3.5 text-[34px] leading-[1.12] font-bold tracking-tight lg:mb-3 lg:text-[28px]">
-            {s.name}
-          </h1>
-          <section className="rounded-[14px] bg-card px-4 py-3.5" aria-label="Status">
-            <div className="flex flex-wrap items-center gap-2.5">
-              <span
-                className={`size-3 flex-none rounded-full ${dotColor[st.tone]}`}
-                aria-hidden="true"
-              />
-              <span className={`text-xl font-semibold ${textColor[st.tone]}`}>{st.label}</span>
-              {s.kind !== "task" && !s.disabled && (
-                <span className="text-[15px] text-label-2">for {ago(s.since)}</span>
-              )}
-            </div>
-            {s.note && <p className="mt-2.5 text-[15px] font-semibold text-warn">{s.note}</p>}
+      <h1 className="title mt-2 mb-4 text-[48px] lg:mt-0 lg:text-[44px]">{s.name}</h1>
+      <section
+        className="flex flex-col gap-4 rounded-md border border-line bg-card p-4 lg:flex-row lg:items-start lg:justify-between"
+        aria-label="Status"
+      >
+        <div className="min-w-0 lg:max-w-[46ch]">
+          <p className="m-0 flex flex-wrap items-baseline gap-x-3">
+            <span className="inline-flex items-center gap-2.5 text-[24px] font-semibold lg:text-[20px]">
+              <Lamp tone={lampTone(s)} busy={!!s.busy} />
+              {st.label}
+            </span>
+            {s.kind !== "task" && !s.disabled && (
+              <span className="num text-[15px] text-label-2 lg:text-[13px]">
+                {sinceText(s.since)}
+              </span>
+            )}
+          </p>
+          <div className="mt-3 grid gap-1.5 text-[15px] text-label-2 lg:text-[13px]">
+            {s.note && <p className="m-0 font-semibold text-warn">{s.note}</p>}
+            {(s.errors > 0 || s.warnings > 0) && (
+              <p className="m-0 flex flex-wrap items-center gap-x-4 text-label">
+                <Counts s={s} />
+                <span className="text-label-2">since the last start</span>
+              </p>
+            )}
             {s.build && (
-              <p className="mt-2.5 text-[15px] text-label-2">
+              <p className="m-0">
                 Build{" "}
                 <span className={`font-semibold ${s.build.ok ? "text-good" : "text-bad"}`}>
                   {s.build.ok ? "passed" : "failed"}
@@ -414,26 +469,15 @@ export function Detail({ s, desktop }: { s: Service; services?: Service[]; deskt
                 in {seconds(s.build.ms)}, {ago(s.build.at)} ago.
               </p>
             )}
-            {(s.errors > 0 || s.warnings > 0) && (
-              <p className="mt-2.5 text-[15px]">
-                <span className="font-semibold text-bad">{plural(s.errors, "error")}</span>,{" "}
-                <span className="font-semibold text-warn">{plural(s.warnings, "warning")}</span>{" "}
-                <span className="text-label-2">since the last start.</span>
-              </p>
-            )}
-            {s.kind === "task" && s.detail && (
-              <p className="mt-2.5 text-[15px] text-label-2">{s.detail}</p>
-            )}
-            <p className="mt-2.5 text-[15px] text-label-2">{s.desc}</p>
+            {s.kind === "task" && s.detail && <p className="m-0">{s.detail}</p>}
+            <p className="m-0">{s.desc}</p>
             {s.kind === "process" && s.restarts > 0 && (
-              <p className="mt-2.5 text-[15px] text-label-2">
-                Restarted {plural(s.restarts, "time")} since the hub started.
-              </p>
+              <p className="m-0">Restarted {plural(s.restarts, "time")} since the hub started.</p>
             )}
-          </section>
+          </div>
         </div>
         <Actions s={s} />
-      </div>
+      </section>
       <LogView
         url={`/api/services/${s.id}/logs`}
         clearPath={`services/${s.id}/clear`}

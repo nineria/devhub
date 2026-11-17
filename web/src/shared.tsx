@@ -13,12 +13,6 @@ export const confirm = createConfirm<{
 }>();
 
 // Whole class names, so Tailwind can see them.
-export const dotColor: Record<Tone, string> = {
-  good: "bg-good",
-  warn: "bg-warn",
-  bad: "bg-bad",
-  idle: "bg-label-2",
-};
 export const textColor: Record<Tone, string> = {
   good: "text-good",
   warn: "text-warn",
@@ -26,10 +20,18 @@ export const textColor: Record<Tone, string> = {
   idle: "text-label-2",
 };
 
-export const buttonClass =
-  "min-h-[50px] w-full rounded-xl text-[17px] font-semibold lg:min-h-10 lg:w-auto lg:px-4 lg:text-[15px]";
-export const sectionClass =
-  "mx-1 mt-6 mb-2 text-[13px] font-semibold uppercase tracking-wider text-label-2";
+/** A status lamp. Its shape (circle, triangle, square, ring) says the state even without color. */
+export function Lamp({ tone, busy, small }: { tone: Tone; busy?: boolean; small?: boolean }) {
+  return (
+    <span
+      className={`lamp lamp-${tone} ${busy ? "lamp-busy" : ""} ${small ? "lamp-sm" : ""}`}
+      aria-hidden="true"
+    />
+  );
+}
+
+export const buttonClass = "w-full lg:w-auto lg:flex-none lg:px-3.5";
+export const sectionClass = "m-0 text-[15px] font-semibold lg:text-[13px]";
 
 export function Icon({ children, size = 24 }: { children: ReactNode; size?: number }) {
   return (

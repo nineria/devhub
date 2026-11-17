@@ -74,7 +74,7 @@ function highlight(text: string, re: RegExp | null): ReactNode {
     const at = match.index ?? 0;
     parts.push(text.slice(last, at));
     parts.push(
-      <mark key={n++} className="rounded-sm bg-accent/30 text-inherit">
+      <mark key={n++} className="rounded-sm bg-focus/30 text-inherit">
         {match[0]}
       </mark>,
     );
@@ -106,9 +106,9 @@ type Level = "all" | "error" | "warn";
 type Source = "all" | "build" | "run";
 
 const rowTint = {
-  info: "border-l-transparent hover:bg-muted/50",
-  warn: "border-l-warn bg-warn/10",
-  error: "border-l-bad bg-bad/10",
+  info: "hover:bg-muted/60",
+  warn: "bg-warn/12",
+  error: "bg-bad/12",
 } as const;
 
 /** One log row: time, level, source, message. A click opens it in full with its raw details. */
@@ -135,22 +135,20 @@ const Row = memo(function Row({
       onKeyDown={(e) =>
         (e.key === "Enter" || e.key === " ") && (e.preventDefault(), setOpen((o) => !o))
       }
-      className={`cursor-default border-b-[0.5px] border-l-2 border-b-line/60 px-3 py-[3px] outline-none focus-visible:bg-muted ${rowTint[l.l]}`}
+      className={`cursor-default border-b-[0.5px] border-b-line/60 px-3 py-[3px] outline-none focus-visible:bg-muted ${rowTint[l.l]}`}
     >
       <div className="flex flex-wrap items-baseline gap-x-3 lg:flex-nowrap">
         <span className="w-[5.5rem] flex-none text-label-2 tabular-nums select-none">
           {clock(l.t)}
         </span>
         {service !== undefined && (
-          <span className="w-28 flex-none truncate font-semibold text-accent select-none">
-            {service}
-          </span>
+          <span className="w-28 flex-none truncate font-semibold select-none">{service}</span>
         )}
-        <span className="w-[3.25rem] flex-none text-[11px] font-semibold tracking-wide uppercase select-none">
+        <span className="w-[3.25rem] flex-none text-[11px] font-semibold select-none">
           {l.l === "error" ? (
-            <span className="rounded bg-bad/20 px-1.5 py-px text-bad">error</span>
+            <span className="font-bold text-bad">error</span>
           ) : l.l === "warn" ? (
-            <span className="rounded bg-warn/20 px-1.5 py-px text-warn">warn</span>
+            <span className="font-bold text-warn">warn</span>
           ) : (
             <span className="text-label-2">{l.s}</span>
           )}
@@ -162,7 +160,7 @@ const Row = memo(function Row({
         </span>
       </div>
       {open && (
-        <div className="mt-1 mb-1.5 rounded-lg bg-bg px-2.5 py-2 text-[12px] text-label-2">
+        <div className="mt-1 mb-1.5 rounded bg-bg px-2.5 py-2 text-[12px] text-label-2">
           <div>
             {clockMs(l.t)} · {l.s}
             {service ? ` · ${service}` : ""} · {l.l}
@@ -232,13 +230,13 @@ export function LogView({
       <div className="flex flex-wrap items-center justify-between gap-x-4">
         <h2 className={sectionClass}>{title}</h2>
         <div className="flex items-center gap-4">
-          <label className="inline-flex min-h-11 items-center gap-2.5 text-[15px] text-label-2">
+          <label className="inline-flex min-h-11 items-center gap-2.5 text-[15px] text-label-2 lg:text-[13px]">
             Wrap
             <Switch checked={wrap} onCheckedChange={setWrap} aria-label="Wrap long lines">
               <SwitchThumb />
             </Switch>
           </label>
-          <label className="inline-flex min-h-11 items-center gap-2.5 text-[15px] text-label-2">
+          <label className="inline-flex min-h-11 items-center gap-2.5 text-[15px] text-label-2 lg:text-[13px]">
             <span className="inline-flex items-center gap-1.5">
               <span
                 className={`size-2 rounded-full ${follow ? "bg-good" : "bg-label-2"}`}
@@ -287,7 +285,7 @@ export function LogView({
         </SegmentedControl>
         <div className="flex gap-2 lg:ml-auto">
           <Button
-            className="min-h-11 flex-1 rounded-xl lg:min-h-10 lg:flex-none lg:px-4"
+            className="flex-1 lg:flex-none lg:px-3.5"
             onClick={() =>
               toast(copyText(plain()) ? `Copied ${shown.length} lines` : "Couldn't copy")
             }
@@ -295,7 +293,7 @@ export function LogView({
             Copy
           </Button>
           <Button
-            className="min-h-11 flex-1 rounded-xl lg:min-h-10 lg:flex-none lg:px-4"
+            className="flex-1 lg:flex-none lg:px-3.5"
             onClick={async () => {
               await post(clearPath);
               clear();
@@ -307,14 +305,14 @@ export function LogView({
       </div>
 
       <div
-        className={`relative overflow-hidden rounded-[14px] bg-card ${fill ? "flex min-h-0 flex-1 flex-col" : ""}`}
+        className={`relative overflow-hidden rounded-md border border-line bg-card ${fill ? "flex min-h-0 flex-1 flex-col" : ""}`}
       >
         <div
           ref={box}
           onScroll={onScroll}
           role="log"
           aria-label={`${title} lines`}
-          className={`overflow-auto py-1 font-mono text-[12.5px] leading-[1.55] ${fill ? "min-h-0 flex-1" : "max-h-[55vh] lg:max-h-[60vh]"}`}
+          className={`overflow-auto py-1 font-mono text-[12px] leading-[1.6] lg:text-[11.5px] ${fill ? "min-h-0 flex-1" : "max-h-[55vh] lg:max-h-[60vh]"}`}
         >
           {lines === null ? (
             <p className="px-3 py-2 text-label-2">Loading…</p>
@@ -336,7 +334,7 @@ export function LogView({
         </div>
         {!follow && shown.length > 0 && (
           <Button
-            className="absolute right-3 bottom-3 min-h-10 rounded-full px-4 shadow-lg"
+            className="absolute right-3 bottom-3 px-4 shadow-lg"
             data-variant="solid"
             onClick={() => setFollow(true)}
           >

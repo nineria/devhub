@@ -1,23 +1,27 @@
 @layer ui-sdk;
 @import "tailwindcss";
 @import "@ui-sdk/core/web.css" layer(components);
+@import "@fontsource-variable/instrument-sans/wdth.css";
+@import "@fontsource-variable/martian-mono/index.css";
 
-/* Colors follow the system appearance through light-dark(); the page has no theme switch.
-   Measured contrast: secondary text 5.1:1 on the card in light and 6.4:1 in dark; status text colors
-   are all above 4.5:1 on their card. */
+/* A control-room palette: a grey chassis, a lighter panel, ink for everything that acts, and colour only
+   for status. Measured contrast: ink-2 on the panel 6.2:1 in light and 6.4:1 in dark; status text on the
+   panel at least 5.4:1, and on its own 12% tint (a warn or error log row) at least 4.6:1 in both themes. */
 @theme {
-  --color-bg: light-dark(#f2f2f7, #000000);
-  --color-card: light-dark(#ffffff, #1c1c1e);
-  --color-line: light-dark(#d1d1d6, #38383a);
-  --color-label: light-dark(#000000, #ffffff);
-  --color-label-2: light-dark(#6c6c70, #98989f);
-  --color-accent: light-dark(#0062d6, #0a84ff);
-  --color-good: light-dark(#1a7f45, #32d74b);
-  --color-warn: light-dark(#8f5d00, #ffd60a);
-  --color-bad: light-dark(#c4282d, #ff6961);
-  --color-muted: light-dark(#e5e5ea, #2c2c2e);
-  --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif;
-  --font-mono: ui-monospace, "SF Mono", Menlo, monospace;
+  --color-bg: light-dark(#e4e6e1, #12161a);
+  --color-card: light-dark(#f3f4f0, #1b2127);
+  --color-line: light-dark(#c4c8bf, #2e363e);
+  --color-label: light-dark(#15181a, #e9edeb);
+  --color-label-2: light-dark(#565c58, #98a19d);
+  --color-accent: light-dark(#15181a, #e9edeb);
+  --color-on-accent: light-dark(#f3f4f0, #12161a);
+  --color-focus: light-dark(#2457d6, #8fb0ff);
+  --color-good: light-dark(#1f7a46, #4cc57f);
+  --color-warn: light-dark(#8a5800, #f0b43c);
+  --color-bad: light-dark(#b52a20, #ff7a6b);
+  --color-muted: light-dark(#d8dbd3, #252d34);
+  --font-sans: "Instrument Sans Variable", system-ui, sans-serif;
+  --font-mono: "Martian Mono Variable", ui-monospace, "SF Mono", Menlo, monospace;
   --tabbar: 56px;
 }
 
@@ -30,16 +34,52 @@
   --ui-border: var(--color-line);
   --ui-input: var(--color-line);
   --ui-primary: var(--color-accent);
-  --ui-primary-foreground: #ffffff;
-  --ui-ring: var(--color-accent);
-  --ui-radius: 12px;
+  --ui-primary-foreground: var(--color-on-accent);
+  --ui-ring: var(--color-focus);
+  --ui-radius: 6px;
   --ui-font-size: 17px;
   --ui-font-sans: var(--font-sans);
+
+  /* One size for every button, field and segmented control: 48 px on a phone, 32 px on a PC. */
+  --control: 48px;
+  --control-text: 17px;
+  --control-radius: 8px;
+}
+@media (min-width: 1024px) {
+  :root {
+    --control: 32px;
+    --control-text: 13px;
+    --control-radius: 6px;
+  }
+  body {
+    font-size: 13px;
+  }
 }
 
 body {
   @apply bg-bg font-sans text-[17px] leading-[1.35] text-label antialiased;
   -webkit-text-size-adjust: 100%;
+  font-optical-sizing: auto;
+}
+
+/* Titles are set condensed and heavy: the one place the type is the design. */
+.title {
+  font-stretch: 78%;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  line-height: 1;
+}
+.mono {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+.num {
+  font-variant-numeric: tabular-nums;
+}
+
+:where(button, a, input, [role="row"]):focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
 }
 
 /* ui-sdk parts that need page-level shaping (utilities can't reach their inner structure). */
@@ -53,6 +93,7 @@ body {
 [data-slot="alert-dialog-content"] {
   width: min(calc(100vw - 32px), 24rem);
   padding: 20px;
+  border-radius: 10px;
 }
 [data-slot="alert-dialog-content"] [data-slot="stack"] {
   display: grid;
@@ -65,10 +106,117 @@ body {
   margin-top: 18px;
 }
 [data-slot="alert-dialog-close"] {
-  min-height: 48px;
-  font-size: 17px;
+  height: var(--control);
+  min-height: var(--control);
+  font-size: var(--control-text);
   font-weight: 600;
-  border-radius: 12px;
+}
+
+/* Controls: outlined, square-ish, one size. Ink is the only fill. */
+[data-slot="button"]:not([aria-label]),
+[data-slot="input"],
+[data-slot="segmented-control"],
+.btn {
+  box-sizing: border-box;
+  height: var(--control);
+  min-height: var(--control);
+  font-size: var(--control-text);
+  border-radius: var(--control-radius);
+}
+[data-slot="button"],
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding-inline: 14px;
+  border: 1px solid var(--color-line);
+  background: transparent;
+  font-weight: 600;
+  transition:
+    background-color 0.12s ease,
+    border-color 0.12s ease;
+}
+[data-slot="button"]:hover:not([data-disabled]),
+.btn:hover {
+  background: var(--color-muted);
+  border-color: color-mix(in oklab, var(--color-label) 35%, var(--color-line));
+}
+[data-slot="button"][data-variant="solid"] {
+  border-color: var(--color-accent);
+  background: var(--color-accent);
+  color: var(--color-on-accent);
+}
+[data-slot="button"][data-variant="solid"]:hover:not([data-disabled]) {
+  background: color-mix(in oklab, var(--color-accent) 82%, var(--color-bg));
+}
+[data-slot="input"] {
+  border-color: var(--color-line);
+  background: var(--color-card);
+}
+[data-slot="input"]:focus-visible {
+  outline-offset: 0;
+}
+[data-slot="segmented-control"] {
+  border-color: var(--color-line);
+  background: transparent;
+  padding: 3px;
+}
+[data-slot="segmented-control-item"] {
+  font-size: var(--control-text);
+  min-height: 0;
+  height: calc(var(--control) - 8px);
+  border-radius: calc(var(--control-radius) - 2px);
+}
+[data-slot="segmented-control-item"][data-selected],
+[data-slot="segmented-control-item"][aria-checked="true"] {
+  background: var(--color-accent);
+  color: var(--color-on-accent);
+}
+[data-slot="segmented-control-indicator"] {
+  display: none;
+}
+
+/* Lamps: the shape carries the state, so color is never the only cue. */
+.lamp {
+  display: inline-block;
+  flex: none;
+  width: 12px;
+  height: 12px;
+  background: currentColor;
+}
+.lamp-good {
+  color: var(--color-good);
+  border-radius: 50%;
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--color-good) 22%, transparent);
+}
+.lamp-warn {
+  color: var(--color-warn);
+  clip-path: polygon(50% 4%, 100% 94%, 0 94%);
+}
+.lamp-bad {
+  color: var(--color-bad);
+  border-radius: 2px;
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--color-bad) 22%, transparent);
+}
+.lamp-idle {
+  color: var(--color-label-2);
+  border-radius: 50%;
+  background: transparent;
+  box-shadow: inset 0 0 0 2px currentColor;
+}
+.lamp-sm {
+  width: 9px;
+  height: 9px;
+  box-shadow: none;
+}
+/* A lamp breathes only while the service is busy, which is when you should look at it. */
+.lamp-busy {
+  animation: breathe 1.2s ease-in-out infinite;
+}
+@keyframes breathe {
+  50% {
+    opacity: 0.35;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -93,3 +93,21 @@ export function ago(since: number, now = Date.now() / 1000): string {
 export function seconds(ms: number): string {
   return ms < 1000 ? `${ms} ms` : `${(ms / 1000).toFixed(ms < 10000 ? 1 : 0)} s`;
 }
+
+/** A service needs attention when its status is off, or it has logged an error since it started. */
+export function needsAttention(s: Service): boolean {
+  const tone = statusOf(s).tone;
+  return tone === "warn" || tone === "bad" || s.errors > 0;
+}
+
+/** The tone a lamp shows: the status, raised to a warning when the service has logged an error. */
+export function lampTone(s: Service): Tone {
+  const tone = statusOf(s).tone;
+  return (tone === "good" || tone === "idle") && s.errors > 0 ? "warn" : tone;
+}
+
+/** "for 2 min", but not "for just now". */
+export function sinceText(since: number): string {
+  const t = ago(since);
+  return t === "just now" ? t : `for ${t}`;
+}
