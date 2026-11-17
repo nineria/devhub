@@ -168,10 +168,12 @@ body {
 }
 [data-slot="segmented-control-item"][data-selected],
 [data-slot="segmented-control-item"][aria-checked="true"] {
-  background: var(--color-card);
+  background: light-dark(#ffffff, #353c47);
   color: var(--color-label);
   font-weight: 600;
-  box-shadow: 0 1px 2px light-dark(rgb(16 24 40 / 0.12), rgb(0 0 0 / 0.5));
+  box-shadow:
+    0 0 0 1px light-dark(transparent, rgb(255 255 255 / 0.08)),
+    0 1px 2px light-dark(rgb(16 24 40 / 0.12), rgb(0 0 0 / 0.5));
 }
 [data-slot="segmented-control-indicator"] {
   display: none;
