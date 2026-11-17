@@ -381,6 +381,31 @@ function Actions({ s }: { s: Service }) {
           </Button>
         )}
         {secondary.length > 0 && <div className="grid gap-2.5 lg:contents">{secondary}</div>}
+        {s.blocker && live && (
+          <Button
+            className={buttonClass}
+            data-variant="solid"
+            onClick={async () => {
+              const b = s.blocker!;
+              if (
+                !(await ask(
+                  `Free port ${b.port}?`,
+                  `This stops pid ${b.pid} (${b.cmd}), which is using the port, and then starts ${s.name}.`,
+                  "Stop it and start",
+                  `Stops pid ${b.pid} on port ${b.port}`,
+                ))
+              )
+                return;
+              await act({
+                path: path("free-port"),
+                doing: `Freeing port ${b.port}`,
+                done: `Port ${b.port} freed`,
+              });
+            }}
+          >
+            Free port {s.blocker.port} and start
+          </Button>
+        )}
         {canEdit && (
           <Button className={buttonClass} onClick={() => openEditor(s.id)}>
             Edit {s.name}

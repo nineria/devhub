@@ -42,6 +42,7 @@ type Service struct {
 	Run       string     `json:"run,omitempty"`
 	Watch     []string   `json:"watch,omitempty"`
 	Ready     string     `json:"ready,omitempty"`
+	Port      int        `json:"port,omitempty"` // the port a process listens on; the hub waits for it to be free
 	Check     string     `json:"check,omitempty"`
 	Interval  int        `json:"interval,omitempty"`
 	Heartbeat *Heartbeat `json:"heartbeat,omitempty"`
@@ -95,6 +96,9 @@ func validate(services []Service) error {
 		case "process":
 			if s.Run == "" {
 				return fmt.Errorf("%s: a process needs run", s.ID)
+			}
+			if s.Port < 0 || s.Port > 65535 {
+				return fmt.Errorf("%s: port must be between 1 and 65535", s.ID)
 			}
 		case "check", "task":
 			if s.Check == "" {

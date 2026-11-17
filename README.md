@@ -105,6 +105,7 @@ joined with the service's `dir`.
 | `build` | process | Run before `run` and after each change. If it fails, the old version keeps running. |
 | `run` | process | The command that runs the service. Keep it in the foreground (`exec` it from a script). |
 | `watch` | process | Folders or files, relative to `root`. A change rebuilds and restarts. `node_modules`, `.git`, `dist`, `target`, `.next`, `.run`, `logs`, `data` and `tmp` are skipped. |
+| `port` | process | Optional. The port the service listens on. If another process is using it, the hub shows "Port in use" with that process, waits, and offers **Free port and start** instead of retrying in a loop. |
 | `ready` | process | A URL. The service counts as running once it answers with a status below 400. |
 | `check` | check, task | A command. Exit 0 means healthy. For a `task`, the first line of its output is shown. |
 | `interval` | check | Seconds between checks. |

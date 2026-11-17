@@ -20,6 +20,7 @@ export type Service = {
   errors: number;
   warnings: number;
   build?: BuildInfo;
+  blocker?: { port: number; pid: number; cmd: string };
   buttons: ButtonInfo[];
   links: LinkInfo[];
 };
@@ -58,6 +59,8 @@ export function statusOf(s: Service): Status {
       return { label: "Starting", tone: "warn" };
     case "building":
       return { label: "Building", tone: "warn" };
+    case "blocked":
+      return { label: "Port in use", tone: "warn" };
     case "backoff":
       return { label: "Crashed, retrying", tone: "bad" };
     case "failed":
@@ -92,6 +95,7 @@ export type ServiceConfig = {
   run?: string;
   watch?: string[];
   ready?: string;
+  port?: number;
   check?: string;
   interval?: number;
   heartbeat?: { url: string; method?: string; tokenEnv?: string };

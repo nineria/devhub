@@ -38,6 +38,7 @@ type Runner struct {
 	buildMu    sync.Mutex
 	disabled   bool
 	build      *BuildView // the last build, if there has been one
+	blocker    *Blocker   // set while another process holds the service's port
 	ctx        context.Context
 	cancel     context.CancelFunc // Close: ends the loops and any build in progress
 }
@@ -231,6 +232,9 @@ func (r *Runner) supervise() {
 		}
 		r.mu.Unlock()
 
+		if !r.waitPortFree() {
+			continue
+		}
 		started := time.Now()
 		code := r.runProc()
 		ranFor := time.Since(started)
@@ -285,7 +289,7 @@ func (r *Runner) waitWant() bool {
 		if r.state != "stopped" {
 			r.since = time.Now()
 		}
-		r.state, r.ready, r.note = "stopped", false, ""
+		r.state, r.ready, r.note, r.blocker = "stopped", false, "", nil
 		r.mu.Unlock()
 		select {
 		case <-r.wake:
@@ -541,7 +545,7 @@ func (r *Runner) View() View {
 	return View{
 		ID: r.svc.ID, Name: r.svc.Name, Group: r.svc.Group, Kind: r.svc.Kind, Desc: r.svc.Desc,
 		State: state, Ready: r.ready, Note: r.note, Since: r.since.Unix(), Restarts: r.restarts,
-		Want: r.want, Pid: pid, Disabled: r.disabled, Errors: errs, Warnings: warns, Build: r.build,
+		Want: r.want, Pid: pid, Disabled: r.disabled, Errors: errs, Warnings: warns, Build: r.build, Blocker: r.blocker,
 		Buttons: viewButtons(r.svc.Buttons), Links: viewLinks(r.svc.Links),
 	}
 }

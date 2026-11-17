@@ -159,7 +159,7 @@ func normalize(s Service) Service {
 	if s.Kind == "process" {
 		s.Check, s.Interval, s.Heartbeat = "", 0, nil
 	} else {
-		s.Build, s.Run, s.Watch, s.Ready = "", "", nil, ""
+		s.Build, s.Run, s.Watch, s.Ready, s.Port = "", "", nil, "", 0
 	}
 	if s.Kind == "task" {
 		s.Interval, s.Heartbeat = 0, nil
