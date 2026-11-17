@@ -2,7 +2,8 @@ import { useEffect, useState, type ReactNode } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createConfirm } from "@ui-sdk/react/alert-dialog";
 import { createToaster } from "@ui-sdk/react/toast";
-import { getServices, post, type Tone } from "./api";
+import { createContext, useContext } from "react";
+import { getMeta, getServices, post, type Tone } from "./api";
 
 export const toast = createToaster();
 export const confirm = createConfirm<{
@@ -67,6 +68,15 @@ export function useServices() {
     refetchIntervalInBackground: false,
   });
 }
+
+/** Whether the hub lets this page add, change and delete services. */
+export function useMeta() {
+  return useQuery({ queryKey: ["meta"], queryFn: getMeta, staleTime: Infinity });
+}
+
+/** Opens the service editor: for a new service, or for the one with this id. */
+export const EditorContext = createContext<(id?: string) => void>(() => {});
+export const useEditor = () => useContext(EditorContext);
 
 /** Presses a button on a service, reports the result in a toast, then refreshes the list. */
 export function useAct() {

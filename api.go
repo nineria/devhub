@@ -7,6 +7,7 @@ import (
 	"io/fs"
 	"net/http"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -83,8 +84,13 @@ func (i item) view() View {
 }
 
 type Hub struct {
+	mu    sync.RWMutex // guards order and items, which the page can change
 	order []string
 	items map[string]item
+	// editMu serialises add, change and delete, which wait for the old process to stop.
+	editMu sync.Mutex
+	// edit is nil when editing from the page is turned off.
+	edit *editor
 	// onChange is called after a service is disabled or enabled, so the choice survives a restart.
 	onChange func()
 }
@@ -148,15 +154,11 @@ func (h *Hub) routes(ui fs.FS) http.Handler {
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("GET /api/services", func(w http.ResponseWriter, r *http.Request) {
-		views := make([]View, 0, len(h.order))
-		for _, id := range h.order {
-			views = append(views, h.items[id].view())
-		}
-		jsonOut(w, 200, map[string]any{"services": views, "now": time.Now().Unix()})
+		jsonOut(w, 200, map[string]any{"services": h.views(), "now": time.Now().Unix()})
 	})
 
 	mux.HandleFunc("GET /api/services/{id}/logs", func(w http.ResponseWriter, r *http.Request) {
-		it, ok := h.items[r.PathValue("id")]
+		it, ok := h.get(r.PathValue("id"))
 		if !ok {
 			http.NotFound(w, r)
 			return
@@ -166,7 +168,7 @@ func (h *Hub) routes(ui fs.FS) http.Handler {
 	mux.HandleFunc("GET /api/logs", func(w http.ResponseWriter, r *http.Request) { streamLogs(w, r, allLogs) })
 
 	act := func(w http.ResponseWriter, r *http.Request, fn func(item) (string, error)) {
-		it, ok := h.items[r.PathValue("id")]
+		it, ok := h.get(r.PathValue("id"))
 		if !ok {
 			jsonOut(w, 404, map[string]any{"ok": false, "error": "unknown service"})
 			return
@@ -253,6 +255,8 @@ func (h *Hub) routes(ui fs.FS) http.Handler {
 			return it.checker.RunButton(r.PathValue("button"))
 		})
 	}))
+
+	h.manageRoutes(mux)
 
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) { w.Write([]byte("ok")) })
 

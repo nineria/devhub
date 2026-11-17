@@ -38,6 +38,8 @@ type Runner struct {
 	buildMu    sync.Mutex
 	disabled   bool
 	build      *BuildView // the last build, if there has been one
+	ctx        context.Context
+	cancel     context.CancelFunc // Close: ends the loops and any build in progress
 }
 
 func newRunner(svc Service, root string, env []string) *Runner {
@@ -45,9 +47,47 @@ func newRunner(svc Service, root string, env []string) *Runner {
 	if svc.Dir != "" {
 		dir = filepath.Join(root, svc.Dir)
 	}
+	ctx, cancel := context.WithCancel(context.Background())
 	return &Runner{
 		svc: svc, root: root, dir: dir, env: env, log: newLogBuf(svc.ID, allLogs),
-		state: "stopped", since: time.Now(), wake: make(chan struct{}, 1),
+		state: "stopped", since: time.Now(), wake: make(chan struct{}, 1), ctx: ctx, cancel: cancel,
+	}
+}
+
+// Close stops the process and ends every loop for good, which a deleted or replaced service needs.
+// Wait for it with Stopped.
+func (r *Runner) Close() {
+	r.mu.Lock()
+	r.want = false
+	r.mu.Unlock()
+	r.cancel()
+	r.killProc()
+	r.kick()
+}
+
+// Stopped waits until the process is gone (the kill escalates after 8 seconds).
+func (r *Runner) Stopped(limit time.Duration) bool {
+	deadline := time.Now().Add(limit)
+	for time.Now().Before(deadline) {
+		if r.View().Pid == 0 {
+			return true
+		}
+		time.Sleep(50 * time.Millisecond)
+	}
+	return false
+}
+
+func (r *Runner) closed() bool { return r.ctx.Err() != nil }
+
+// nap sleeps, and reports false when the runner was closed meanwhile.
+func (r *Runner) nap(d time.Duration) bool {
+	t := time.NewTimer(d)
+	defer t.Stop()
+	select {
+	case <-t.C:
+		return true
+	case <-r.ctx.Done():
+		return false
 	}
 }
 
@@ -78,7 +118,7 @@ func (r *Runner) Run() {
 
 func (r *Runner) Start() {
 	r.mu.Lock()
-	if r.disabled {
+	if r.disabled || r.closed() {
 		r.mu.Unlock()
 		return
 	}
@@ -163,7 +203,9 @@ func (r *Runner) currentState() string {
 func (r *Runner) supervise() {
 	backoff := time.Second
 	for {
-		r.waitWant()
+		if !r.waitWant() {
+			return
+		}
 		r.mu.Lock()
 		skip := r.skipBuild
 		r.skipBuild = false
@@ -230,19 +272,26 @@ func nextBackoff(d time.Duration) time.Duration {
 	return d
 }
 
-func (r *Runner) waitWant() {
+func (r *Runner) waitWant() bool {
 	for {
+		if r.closed() {
+			return false
+		}
 		r.mu.Lock()
 		if r.want {
 			r.mu.Unlock()
-			return
+			return true
 		}
 		if r.state != "stopped" {
 			r.since = time.Now()
 		}
 		r.state, r.ready, r.note = "stopped", false, ""
 		r.mu.Unlock()
-		<-r.wake
+		select {
+		case <-r.wake:
+		case <-r.ctx.Done():
+			return false
+		}
 	}
 }
 
@@ -252,11 +301,12 @@ func (r *Runner) sleep(d time.Duration) {
 	select {
 	case <-t.C:
 	case <-r.wake:
+	case <-r.ctx.Done():
 	}
 }
 
 func (r *Runner) runBuild() bool {
-	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Minute)
+	ctx, cancel := context.WithTimeout(r.ctx, 20*time.Minute)
 	defer cancel()
 	started := time.Now()
 	r.log.ResetCounts()
@@ -392,7 +442,9 @@ func (r *Runner) probeLoop() {
 				wait = 15 * time.Second
 			}
 		}
-		time.Sleep(wait)
+		if !r.nap(wait) {
+			return
+		}
 	}
 }
 
@@ -445,14 +497,18 @@ func (r *Runner) watchLoop() {
 	paths := r.watchPaths()
 	n, newest, size := fingerprint(paths)
 	for {
-		time.Sleep(2 * time.Second)
+		if !r.nap(2 * time.Second) {
+			return
+		}
 		n2, newest2, size2 := fingerprint(paths)
 		if n2 == n && newest2 == newest && size2 == size {
 			continue
 		}
 		// Wait until the files stop changing (an editor or a formatter often writes several).
 		for {
-			time.Sleep(700 * time.Millisecond)
+			if !r.nap(700 * time.Millisecond) {
+				return
+			}
 			n3, newest3, size3 := fingerprint(paths)
 			if n3 == n2 && newest3 == newest2 && size3 == size2 {
 				break

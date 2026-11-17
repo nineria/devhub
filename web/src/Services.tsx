@@ -9,10 +9,22 @@ import {
 import { Toggle, ToggleIcon } from "@ui-sdk/react/toggle";
 import { ago, lampTone, needsAttention, seconds, statusOf, type Service } from "./api";
 import { LogView } from "./Logs";
-import { Lamp, buttonClass, confirm, pill, textColor, useAct } from "./shared";
+import { saveService } from "./api";
+import { useQueryClient } from "@tanstack/react-query";
+import {
+  Lamp,
+  buttonClass,
+  confirm,
+  pill,
+  textColor,
+  toast,
+  useAct,
+  useEditor,
+  useMeta,
+} from "./shared";
 
 /** Groups come from the config, in the order they first appear. */
-const groupLabel = (g: string) => g.charAt(0).toUpperCase() + g.slice(1);
+const groupLabel = (g: string) => (g ? g.charAt(0).toUpperCase() + g.slice(1) : "Other");
 
 export type Only = "all" | "attention";
 
@@ -226,6 +238,28 @@ export function ServiceList({
 
 function Actions({ s }: { s: Service }) {
   const act = useAct();
+  const client = useQueryClient();
+  const openEditor = useEditor();
+  const canEdit = useMeta().data?.canEdit === true;
+  const remove = async () => {
+    if (
+      !(await confirm({
+        title: `Delete ${s.name}?`,
+        message: "It stops and is removed from devhub.json. This can't be undone.",
+        label: `Delete ${s.name}`,
+        agent: `Deletes ${s.name}`,
+      }))
+    )
+      return;
+    const res = await saveService("DELETE", s.id);
+    if (res.ok) {
+      toast(`${s.name} deleted`);
+      location.hash = "#/";
+    } else {
+      toast(`Deleting ${s.name} didn't work`, { description: res.error });
+    }
+    await client.invalidateQueries({ queryKey: ["services"] });
+  };
   const ask = (title: string, message: string, label: string, agent: string) =>
     confirm({ title, message, label, agent });
   const stopped = s.kind === "process" && !s.want;
@@ -347,6 +381,16 @@ function Actions({ s }: { s: Service }) {
           </Button>
         )}
         {secondary.length > 0 && <div className="grid gap-2.5 lg:contents">{secondary}</div>}
+        {canEdit && (
+          <Button className={buttonClass} onClick={() => openEditor(s.id)}>
+            Edit {s.name}
+          </Button>
+        )}
+        {canEdit && (
+          <Button className={`${buttonClass} text-bad`} onClick={remove}>
+            Delete {s.name}
+          </Button>
+        )}
         {live && (
           <>
             <Button
