@@ -39,8 +39,8 @@ dashboard to babysit. You describe your services in one JSON file.
 - **Logs.** Per-service and combined logs with build and runtime sources, error and warning levels
   (guessed from the text), a text or `/regex/` filter with highlighting, Follow, Clear and Copy.
 - **Responsive page.** A sidebar and a large log pane on a PC; a single column with a tab bar on a phone.
-  A row of status lamps at the top shows every service at a glance. Each lamp has its own shape (circle,
-  triangle, square, ring), so the state reads without color.
+  Every service has a status mark with its own shape (circle, triangle, square, ring), so the state reads
+  without color.
   Light and dark follow the system. Star services to pin them.
 
 ## Quick start
