@@ -10,7 +10,16 @@ import {
 import { Tabs, TabsList, TabsPanel, TabsTab } from "@ui-sdk/react/tabs";
 import { Toast, ToastDescription, ToastRegion, ToastTitle } from "@ui-sdk/react/toast";
 import { AllLogs, Detail, Filters, Health, ServiceList, type Only } from "./Services";
-import { Icon, confirm, toast, useDesktop, useRoute, useServices, useStarred } from "./shared";
+import {
+  Icon,
+  Lamp,
+  confirm,
+  toast,
+  useDesktop,
+  useRoute,
+  useServices,
+  useStarred,
+} from "./shared";
 
 const TABS = [
   {
@@ -133,7 +142,7 @@ export function App() {
     return (
       <div className="grid h-dvh grid-cols-[22rem_minmax(0,1fr)]">
         <aside
-          className="flex min-h-0 flex-col overflow-y-auto border-r-[0.5px] border-line px-4 py-4"
+          className="flex min-h-0 flex-col overflow-y-auto border-r-[0.5px] border-line bg-card px-3 py-3"
           aria-label="Services"
         >
           <Health services={services} compact />
@@ -141,11 +150,12 @@ export function App() {
           <a
             href="#/logs"
             aria-current={logsActive ? "page" : undefined}
-            className={`mb-3 flex min-h-11 items-center justify-between rounded-xl px-3.5 text-[16px] font-semibold text-inherit no-underline focus-visible:outline-2 focus-visible:outline-accent ${logsActive ? "bg-card" : "hover:bg-muted"}`}
+            className={`mb-3 flex h-(--control) items-center justify-between rounded-md px-3 text-[13px] font-medium text-inherit no-underline ${logsActive ? "bg-accent text-on-accent" : "hover:bg-muted"}`}
           >
             All logs
             {total > 0 && (
-              <span className="text-[14px] text-bad">
+              <span className="inline-flex items-center gap-1.5 text-[12px] font-semibold">
+                <Lamp tone="bad" small />
                 {total} error{total === 1 ? "" : "s"}
               </span>
             )}
@@ -176,14 +186,12 @@ export function App() {
             {selected ? <Detail s={selected} services={services} desktop={false} /> : list}
           </TabsPanel>
           <TabsPanel value="logs">
-            <h1 className="px-1 pt-6 pb-1 text-[34px] leading-[1.12] font-bold tracking-tight">
-              Logs
-            </h1>
+            <h1 className="title pt-6 pb-3 text-[52px]">Logs</h1>
             <AllLogs services={services} />
           </TabsPanel>
           <TabsList
             aria-label="Sections"
-            className="fixed inset-x-0 bottom-0 z-10 grid h-[calc(var(--tabbar)+env(safe-area-inset-bottom))] grid-cols-2 gap-0 rounded-none border-t-[0.5px] border-line bg-[light-dark(rgb(249_249_249/0.94),rgb(29_29_31/0.94))] pb-[env(safe-area-inset-bottom)] backdrop-blur-xl"
+            className="fixed inset-x-0 bottom-0 z-10 grid h-[calc(var(--tabbar)+env(safe-area-inset-bottom))] grid-cols-2 gap-0 rounded-none border-t-[0.5px] border-line bg-card pb-[env(safe-area-inset-bottom)]"
           >
             {TABS.map((t) => (
               <TabsTab
