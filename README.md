@@ -11,7 +11,7 @@ One Go binary · about 17 MB of memory · no Kubernetes, no accounts
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/desktop-dark.png">
-  <img src="docs/screenshots/desktop-light.png" alt="Dev Hub: a row of status lamps and the service list in the sidebar, and the selected service with its status, actions and a live, filterable log" width="900">
+  <img src="docs/screenshots/desktop-light.png" alt="Dev Hub: the grouped service list in the sidebar, and the selected service with its status, actions, key facts and a live, filterable log" width="900">
 </picture>
 
 <sub>The demo services in <a href="examples/demo">examples/demo</a>, in light and dark. On a phone the same page becomes one column with a tab bar.</sub>
