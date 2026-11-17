@@ -80,6 +80,59 @@ export async function post(path: string): Promise<ActionResult> {
   return res.json();
 }
 
+/** What the config file holds for one service: the page edits this, not the view. */
+export type ServiceConfig = {
+  id: string;
+  name: string;
+  group?: string;
+  kind: "process" | "check" | "task";
+  desc?: string;
+  dir?: string;
+  build?: string;
+  run?: string;
+  watch?: string[];
+  ready?: string;
+  check?: string;
+  interval?: number;
+  heartbeat?: { url: string; method?: string; tokenEnv?: string };
+  buttons?: { id: string; label: string; cmd: string; confirm?: string }[];
+  links?: { label: string; path: string }[];
+};
+
+export type Meta = { canEdit: boolean; root?: string };
+
+export async function getMeta(): Promise<Meta> {
+  const res = await fetch("/api/meta");
+  if (!res.ok) throw new Error(String(res.status));
+  return res.json();
+}
+
+const HEADERS = { "X-Devhub": "1", "Content-Type": "application/json" };
+
+export async function getConfig(id: string): Promise<ServiceConfig> {
+  const res = await fetch(`/api/services/${encodeURIComponent(id)}/config`, { headers: HEADERS });
+  if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error ?? String(res.status));
+  return res.json();
+}
+
+/** Adds (POST), changes (PUT) or deletes a service. Never throws: a failure comes back as ok: false. */
+export async function saveService(
+  method: "POST" | "PUT" | "DELETE",
+  id: string | null,
+  body?: ServiceConfig,
+): Promise<ActionResult> {
+  try {
+    const res = await fetch(id ? `/api/services/${encodeURIComponent(id)}` : "/api/services", {
+      method,
+      headers: HEADERS,
+      body: body ? JSON.stringify(body) : undefined,
+    });
+    return await res.json();
+  } catch {
+    return { ok: false, error: "The hub didn't answer." };
+  }
+}
+
 export function ago(since: number, now = Date.now() / 1000): string {
   const s = Math.max(0, Math.round(now - since));
   if (s < 60) return "just now";

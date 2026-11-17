@@ -1,7 +1,10 @@
 package main
 
 import (
+	"errors"
 	"fmt"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -254,5 +257,161 @@ func TestZeroCountersAreNotErrors(t *testing.T) {
 		if got := levelOf(msg); got != want {
 			t.Errorf("%q: got %s, want %s", msg, got, want)
 		}
+	}
+}
+
+// testHub builds a hub that can edit a config file in a temp dir.
+func testHub(t *testing.T, services ...Service) (*Hub, *editor) {
+	t.Helper()
+	dir := t.TempDir()
+	path := filepath.Join(dir, "devhub.json")
+	cfg := &Config{Root: dir, RawRoot: dir}
+	e := newEditor(path, cfg, childEnv(), true, nil)
+	if err := e.write(services); err != nil {
+		t.Fatal(err)
+	}
+	h := &Hub{items: map[string]item{}, edit: e}
+	for _, s := range services {
+		h.order = append(h.order, s.ID)
+		h.items[s.ID] = e.spawn(s, nil, false, true)
+	}
+	t.Cleanup(func() {
+		for _, it := range h.items {
+			it.closeAndWait()
+		}
+	})
+	return h, e
+}
+
+func TestEditCreateUpdateDeleteWritesTheFileAndSwapsTheService(t *testing.T) {
+	h, e := testHub(t)
+	if err := h.create(Service{ID: "a", Kind: "process", Run: "sleep 60", Buttons: []Button{{Label: "Go now", Cmd: "true"}}}); err != nil {
+		t.Fatal(err)
+	}
+	r := h.items["a"].runner
+	waitFor(t, "running", 5*time.Second, func() bool { return r.View().State == "running" })
+	pid := r.View().Pid
+
+	if err := h.create(Service{ID: "a", Kind: "check", Check: "true"}); err == nil {
+		t.Fatal("a repeated id must be refused")
+	}
+	if err := h.create(Service{ID: "b c", Kind: "check", Check: "true"}); err == nil {
+		t.Fatal("an id with a space must be refused")
+	}
+
+	// Update: the old process dies, a new one starts, and the log history is kept.
+	if err := h.update("a", Service{Name: "Renamed", Kind: "process", Run: "sleep 61"}); err != nil {
+		t.Fatal(err)
+	}
+	if alive(pid) {
+		t.Fatal("the old process should be gone after an update")
+	}
+	r2 := h.items["a"].runner
+	waitFor(t, "running again", 5*time.Second, func() bool { return r2.View().State == "running" })
+	if r2.View().Name != "Renamed" || r2.Logs() != r.Logs() {
+		t.Fatal("the update should apply and keep the log")
+	}
+	if err := h.update("a", Service{ID: "other", Kind: "process", Run: "true"}); err == nil {
+		t.Fatal("the id must not change")
+	}
+
+	got, err := loadConfig(e.path)
+	if err != nil || len(got.Services) != 1 || got.Services[0].Name != "Renamed" || got.Services[0].Run != "sleep 61" {
+		t.Fatalf("file: %+v %v", got, err)
+	}
+
+	pid2 := r2.View().Pid
+	if err := h.remove("a"); err != nil {
+		t.Fatal(err)
+	}
+	if alive(pid2) || len(h.views()) != 0 {
+		t.Fatal("delete should stop the process and drop the service")
+	}
+	select {
+	case <-r2.ctx.Done():
+	default:
+		t.Fatal("the deleted runner's loops should be told to stop")
+	}
+	if got, _ := loadConfig(e.path); len(got.Services) != 0 {
+		t.Fatalf("file still has %d services", len(got.Services))
+	}
+}
+
+func TestEditKeepsDisabledAndRefusesAfterAHandEdit(t *testing.T) {
+	h, e := testHub(t, Service{ID: "c", Name: "c", Kind: "check", Check: "true", Interval: 1})
+	h.items["c"].disable()
+	if err := h.update("c", Service{Kind: "check", Check: "true", Interval: 5}); err != nil {
+		t.Fatal(err)
+	}
+	if !h.items["c"].view().Disabled {
+		t.Fatal("a disabled service stays disabled after an edit")
+	}
+	time.Sleep(20 * time.Millisecond)
+	os.WriteFile(e.path, []byte(`{"root":"/tmp","services":[]}`), 0o644)
+	err := h.update("c", Service{Kind: "check", Check: "true"})
+	var ee editError
+	if !errors.As(err, &ee) || ee.code != 409 {
+		t.Fatalf("a hand edit should give a 409, got %v", err)
+	}
+}
+
+func TestEditRoutesNeedHeaderHostAndOrigin(t *testing.T) {
+	h, _ := testHub(t, Service{ID: "c", Name: "c", Kind: "check", Check: "true"})
+	srv := httptest.NewServer(h.routes(os.DirFS(t.TempDir())))
+	defer srv.Close()
+	do := func(method, path, body string, hdr map[string]string) int {
+		req, _ := http.NewRequest(method, srv.URL+path, strings.NewReader(body))
+		for k, v := range hdr {
+			req.Header.Set(k, v)
+		}
+		if host := hdr["Host"]; host != "" {
+			req.Host = host
+		}
+		res, err := http.DefaultClient.Do(req)
+		if err != nil {
+			t.Fatal(err)
+		}
+		res.Body.Close()
+		return res.StatusCode
+	}
+	ok := map[string]string{"X-Devhub": "1"}
+	body := `{"id":"n","kind":"check","check":"true"}`
+	if c := do("POST", "/api/services", body, nil); c != 403 {
+		t.Fatalf("no header: %d", c)
+	}
+	if c := do("POST", "/api/services", body, map[string]string{"X-Devhub": "1", "Host": "evil.example:8090"}); c != 403 {
+		t.Fatalf("foreign host (DNS rebinding): %d", c)
+	}
+	if c := do("POST", "/api/services", body, map[string]string{"X-Devhub": "1", "Origin": "http://evil.example"}); c != 403 {
+		t.Fatalf("foreign origin: %d", c)
+	}
+	if c := do("GET", "/api/services/c/config", "", nil); c != 403 {
+		t.Fatalf("reading a config without the header: %d", c)
+	}
+	if c := do("POST", "/api/services", body, ok); c != 200 {
+		t.Fatalf("a good request: %d", c)
+	}
+	if c := do("POST", "/api/services", `{"id":"m","kind":"check","check":"true","bogus":1}`, ok); c != 400 {
+		t.Fatalf("an unknown field: %d", c)
+	}
+	if c := do("DELETE", "/api/services/n", "", ok); c != 200 {
+		t.Fatalf("delete: %d", c)
+	}
+	h.edit = nil
+	if c := do("POST", "/api/services", body, ok); c != 403 {
+		t.Fatalf("editing off: %d", c)
+	}
+}
+
+func TestLoopbackOnlyAndNormalize(t *testing.T) {
+	if !loopbackOnly([]string{"127.0.0.1", " localhost", "::1"}) || loopbackOnly([]string{"127.0.0.1", "100.64.0.12"}) || loopbackOnly([]string{"0.0.0.0"}) {
+		t.Fatal("loopbackOnly")
+	}
+	s := normalize(Service{ID: " x ", Kind: "task", Check: " c ", Interval: 9, Heartbeat: &Heartbeat{URL: "u"},
+		Run: "r", Watch: []string{" ", "a"},
+		Buttons: []Button{{Label: "Do it", Cmd: "true"}, {Label: "Do it", Cmd: "true"}, {}}})
+	if s.ID != "x" || s.Name != "x" || s.Run != "" || s.Interval != 0 || s.Heartbeat != nil || len(s.Buttons) != 2 ||
+		s.Buttons[0].ID != "do-it" || s.Buttons[1].ID != "do-it-2" {
+		t.Fatalf("normalize: %+v", s)
 	}
 }

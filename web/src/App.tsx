@@ -9,13 +9,17 @@ import {
 } from "@ui-sdk/react/alert-dialog";
 import { Tabs, TabsList, TabsPanel, TabsTab } from "@ui-sdk/react/tabs";
 import { Toast, ToastDescription, ToastRegion, ToastTitle } from "@ui-sdk/react/toast";
+import { ServiceEditor } from "./Editor";
 import { AllLogs, Detail, Filters, Health, ServiceList, type Only } from "./Services";
+import { Button } from "@ui-sdk/react/button";
 import {
+  EditorContext,
   Icon,
   Lamp,
   confirm,
   toast,
   useDesktop,
+  useMeta,
   useRoute,
   useServices,
   useStarred,
@@ -95,6 +99,8 @@ function useSlashShortcut() {
 }
 
 export function App() {
+  const [editing, setEditing] = useState<{ id?: string } | null>(null);
+  const canEdit = useMeta().data?.canEdit === true;
   const { data: services, isError } = useServices();
   const [route, go] = useRoute();
   const desktop = useDesktop();
@@ -118,6 +124,11 @@ export function App() {
 
   const list = (
     <>
+      {canEdit && (
+        <Button className="mb-3 w-full" onClick={() => setEditing({})}>
+          New service
+        </Button>
+      )}
       <Filters query={query} setQuery={setQuery} only={only} setOnly={setOnly} />
       <ServiceList
         services={services}
@@ -135,11 +146,24 @@ export function App() {
     </p>
   );
 
+  const wrap = (page: React.ReactNode) => (
+    <EditorContext.Provider value={(id) => setEditing({ id })}>
+      {page}
+      {canEdit && (
+        <ServiceEditor
+          target={editing}
+          groups={[...new Set(services.map((s) => s.group).filter(Boolean))]}
+          onClose={() => setEditing(null)}
+        />
+      )}
+    </EditorContext.Provider>
+  );
+
   // PC: a sidebar with the list, and the selected service (or the combined log) beside it.
   if (desktop) {
     const logsActive = route.kind !== "service";
     const total = services.reduce((n, s) => n + s.errors, 0);
-    return (
+    return wrap(
       <div className="grid h-dvh grid-cols-[22rem_minmax(0,1fr)]">
         <aside
           className="flex min-h-0 flex-col overflow-y-auto border-r-[0.5px] border-line bg-card px-3 py-3"
@@ -170,13 +194,13 @@ export function App() {
           )}
         </main>
         <Dialogs />
-      </div>
+      </div>,
     );
   }
 
   // Phone: one column and a tab bar at the bottom. The bar is for moving between sections only.
   const tab = route.kind === "logs" ? "logs" : "services";
-  return (
+  return wrap(
     <div>
       <main className="mx-auto max-w-160 px-4 pt-[max(1rem,env(safe-area-inset-top))] pb-[calc(var(--tabbar)+env(safe-area-inset-bottom)+24px)]">
         <Tabs value={tab} onValueChange={(v) => go(v === "logs" ? "#/logs" : "#/")}>
@@ -207,6 +231,6 @@ export function App() {
         </Tabs>
       </main>
       <Dialogs />
-    </div>
+    </div>,
   );
 }

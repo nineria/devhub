@@ -22,6 +22,8 @@ type Checker struct {
 	hbTok  string
 	nudge  chan struct{}
 	runBtn sync.Mutex
+	ctx    context.Context
+	cancel context.CancelFunc
 
 	mu      sync.Mutex
 	state   string // unknown, ok, failing, info
@@ -38,8 +40,9 @@ func newChecker(svc Service, root string, env []string) *Checker {
 	if svc.Dir != "" {
 		dir = filepath.Join(root, svc.Dir)
 	}
+	ctx, cancel := context.WithCancel(context.Background())
 	c := &Checker{svc: svc, dir: dir, env: env, log: newLogBuf(svc.ID, allLogs),
-		state: "unknown", since: time.Now(), nudge: make(chan struct{}, 1)}
+		state: "unknown", since: time.Now(), nudge: make(chan struct{}, 1), ctx: ctx, cancel: cancel}
 	if svc.Heartbeat != nil && svc.Heartbeat.TokenEnv != "" {
 		for _, kv := range env {
 			if k, v, ok := strings.Cut(kv, "="); ok && k == svc.Heartbeat.TokenEnv {
@@ -51,6 +54,9 @@ func newChecker(svc Service, root string, env []string) *Checker {
 }
 
 func (c *Checker) Run() { go c.loop() }
+
+// Close ends the loop for good and cancels a check or button that is running.
+func (c *Checker) Close() { c.cancel() }
 
 func (c *Checker) Disable() {
 	c.mu.Lock()
@@ -75,16 +81,25 @@ func (c *Checker) disabled() bool {
 
 func (c *Checker) loop() {
 	for {
+		if c.ctx.Err() != nil {
+			return
+		}
 		if !c.disabled() {
 			c.runCheck()
 		}
 		var wait <-chan time.Time
+		var timer *time.Timer
 		if c.svc.Kind == "check" && c.svc.Interval > 0 {
-			wait = time.After(time.Duration(c.svc.Interval) * time.Second)
+			timer = time.NewTimer(time.Duration(c.svc.Interval) * time.Second)
+			wait = timer.C
 		}
 		select {
 		case <-wait:
 		case <-c.nudge:
+		case <-c.ctx.Done():
+		}
+		if timer != nil {
+			timer.Stop()
 		}
 	}
 }
@@ -122,7 +137,7 @@ func lastLine(s string) string {
 }
 
 func (c *Checker) exec(cmdline string, timeout time.Duration) (string, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	ctx, cancel := context.WithTimeout(c.ctx, timeout)
 	defer cancel()
 	cmd := exec.CommandContext(ctx, "sh", "-c", cmdline)
 	cmd.Dir, cmd.Env = c.dir, c.env

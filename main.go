@@ -67,7 +67,8 @@ func serve(name string, binds []string, port int, h http.Handler) {
 }
 
 func main() {
-	cfg, err := loadConfig(configPath())
+	cfgPath := configPath()
+	cfg, err := loadConfig(cfgPath)
 	if err != nil {
 		log.Fatalf("config: %v", err)
 	}
@@ -81,29 +82,30 @@ func main() {
 	// The services you disabled stay disabled after a restart.
 	statePath := expandHome(envOr("DEVHUB_STATE", "~/.config/devhub/state.json"))
 	disabled := loadDisabled(statePath)
+	binds := strings.Split(envOr("DEVHUB_BIND", "127.0.0.1"), ",")
+
 	hub := &Hub{items: map[string]item{}}
 	hub.onChange = func() { saveDisabled(statePath, hub) }
-	var runners []*Runner
+	// Editing from the page lets a request set a command, so it is on by default only when nothing but
+	// this machine can reach the hub. DEVHUB_EDIT=1 or 0 overrides that.
+	canEdit := loopbackOnly(binds)
+	switch os.Getenv("DEVHUB_EDIT") {
+	case "1":
+		canEdit = true
+	case "0":
+		canEdit = false
+	}
+	hosts := strings.Split(os.Getenv("DEVHUB_HOSTS"), ",")
+	for _, b := range binds {
+		hosts = append(hosts, strings.Trim(strings.TrimSpace(b), "[]"))
+	}
+	hub.edit = newEditor(cfgPath, cfg, env, autostart, hosts)
 	for _, s := range cfg.Services {
 		hub.order = append(hub.order, s.ID)
-		if s.Kind == "process" {
-			r := newRunner(s, cfg.Root, env)
-			r.Run()
-			if disabled[s.ID] {
-				r.Disable()
-			} else if autostart {
-				r.Start()
-			}
-			runners = append(runners, r)
-			hub.items[s.ID] = item{runner: r}
-			continue
-		}
-		c := newChecker(s, cfg.Root, env)
-		if disabled[s.ID] {
-			c.Disable()
-		}
-		c.Run()
-		hub.items[s.ID] = item{checker: c}
+		hub.items[s.ID] = hub.edit.spawn(s, nil, disabled[s.ID], autostart)
+	}
+	if !canEdit { // the editor was needed to start the services; from here on the page may not use it
+		hub.edit = nil
 	}
 
 	ui, err := fs.Sub(uiFiles, "web/dist")
@@ -115,7 +117,6 @@ func main() {
 	if dir := os.Getenv("DEVHUB_UI"); dir != "" {
 		ui = os.DirFS(expandHome(dir))
 	}
-	binds := strings.Split(envOr("DEVHUB_BIND", "127.0.0.1"), ",")
 	port, _ := strconv.Atoi(envOr("DEVHUB_PORT", "8090"))
 	serve("hub", binds, port, hub.routes(ui))
 
@@ -138,6 +139,13 @@ func main() {
 	signal.Notify(sig, syscall.SIGINT, syscall.SIGTERM)
 	<-sig
 	log.Print("stopping services")
+	hub.editMu.Lock() // no edit may start a process while we shut down
+	var runners []*Runner
+	for _, it := range hub.items {
+		if it.runner != nil {
+			runners = append(runners, it.runner)
+		}
+	}
 	for _, r := range runners {
 		r.Stop()
 	}
@@ -170,11 +178,13 @@ func loadDisabled(path string) map[string]bool {
 
 func saveDisabled(path string, hub *Hub) {
 	st := savedState{Disabled: []string{}}
+	hub.mu.RLock()
 	for _, id := range hub.order {
 		if hub.items[id].view().Disabled {
 			st.Disabled = append(st.Disabled, id)
 		}
 	}
+	hub.mu.RUnlock()
 	raw, _ := json.MarshalIndent(st, "", "  ")
 	if err := os.MkdirAll(filepath.Dir(path), 0o700); err == nil {
 		_ = os.WriteFile(path, raw, 0o600)

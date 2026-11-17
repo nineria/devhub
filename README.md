@@ -23,7 +23,7 @@ rebuilds them when you save, watches their health, and shows everything in a pag
 second screen or from your phone.
 
 It does what [Tilt](https://tilt.dev) does for local processes, without Kubernetes and without a separate
-dashboard to babysit. You describe your services in one JSON file.
+dashboard to babysit. You add and edit your services in the page, or in one JSON file.
 
 ## What it does
 
@@ -38,6 +38,9 @@ dashboard to babysit. You describe your services in one JSON file.
 - **Buttons.** Restart a remote service, turn something on or off, run a script. Anything risky asks first.
 - **Logs.** Per-service and combined logs with build and runtime sources, error and warning levels
   (guessed from the text), a text or `/regex/` filter with highlighting, Follow, Clear and Copy.
+- **Manage services in the page.** Add, edit and delete services from the browser, with a form for each
+  kind. Saving writes `devhub.json` and restarts only that service. See
+  [Manage services in the page](#manage-services-in-the-page).
 - **Responsive page.** A sidebar and a large log pane on a PC; a single column with a tab bar on a phone.
   Every service has a status mark with its own shape (circle, triangle, square, ring), so the state reads
   without color.
@@ -65,7 +68,25 @@ error) and two checks, with no setup. From the repository root:
 DEVHUB_CONFIG=examples/demo/devhub.json ./devhub
 ```
 
+## Manage services in the page
+
+On a PC, open the page and press **New service**. Pick a kind (process, check or task), fill in the form
+and save. Select a service and use **Edit** or **Delete** to change it.
+
+- Saving writes `devhub.json` (atomically) and restarts only that service. Its log history is kept, and a
+  disabled service stays disabled. Delete stops the process and removes it from the file.
+- The id of a service can't change once it is created.
+- If you edited `devhub.json` by hand while the hub was running, the page refuses to overwrite it. Restart
+  the hub to load your edits, then try again.
+- The file is rewritten as plain JSON. Fields left empty are left out.
+
+Editing lets a request set a command, so it is **on only when the hub listens on this machine alone**
+(`DEVHUB_BIND` has only loopback addresses). Set `DEVHUB_EDIT=1` to allow it on other addresses, or
+`DEVHUB_EDIT=0` to turn it off. See [Security](#security).
+
 ## Configuration
+
+You can still write `devhub.json` by hand; the page and the file edit the same thing.
 
 `devhub.json` sits next to the binary (or set `DEVHUB_CONFIG`). Commands run through `sh -c`, in `root`
 joined with the service's `dir`.
@@ -88,7 +109,7 @@ joined with the service's `dir`.
 | `check` | check, task | A command. Exit 0 means healthy. For a `task`, the first line of its output is shown. |
 | `interval` | check | Seconds between checks. |
 | `heartbeat` | check | `{ "url": "...", "method": "POST", "tokenEnv": "NAME" }`. Sent after each passing check. `${NAME}` in the URL is filled from your env files. `tokenEnv` sends that variable as a bearer token. |
-| `buttons` | all | `[{ "id", "label", "cmd", "confirm" }]`. A `confirm` text makes the page ask first. |
+| `buttons` | check, task | `[{ "id", "label", "cmd", "confirm" }]`. A `confirm` text makes the page ask first. |
 | `links` | all | `[{ "label", "path" }]`. A path like `:8080` opens that port on the host you opened the hub from. |
 
 See [`devhub.example.json`](devhub.example.json) for a complete example.
@@ -104,6 +125,8 @@ See [`devhub.example.json`](devhub.example.json) for a complete example.
 | `DEVHUB_ENV_FILES` | `~/.config/devhub/env` | Comma-separated files of `KEY=value` lines. They are passed to every command, so tokens stay out of the config. |
 | `DEVHUB_PROXIES` | none | `PORT=URL,...` also serves other local pages on the hub's addresses, for example `8082=http://127.0.0.1:8081`. |
 | `DEVHUB_UI` | built in | Serve the page from a folder, so you can rebuild it without restarting the hub. |
+| `DEVHUB_EDIT` | on for loopback only | `1` allows editing services from the page on any bind address, `0` turns it off. |
+| `DEVHUB_HOSTS` | none | Extra host names the page may be opened with while editing is on, for example a VPN name. The bind addresses and `localhost` are always allowed. |
 | `DEVHUB_STATE` | `~/.config/devhub/state.json` | Remembers which services you disabled. |
 
 ## Use it from your phone
@@ -124,12 +147,17 @@ run the buttons you configured. So:
 
 - It listens on `127.0.0.1` only unless you say otherwise. Add only addresses you trust, such as a VPN
   interface. Never put it on the open internet.
-- Commands come only from `devhub.json`. Nothing in a request can add or change a command.
+- Commands come from `devhub.json`. A request can add or change one only through the editing routes, which
+  are off unless the hub listens on this machine alone (or you set `DEVHUB_EDIT=1`). With editing on,
+  anyone who can reach the port can run any command as you, so turn it on for a VPN address only if you
+  trust everything on that VPN, or keep `DEVHUB_EDIT=0` there.
 - Actions need an `X-Devhub: 1` header, which a web page open in your browser cannot send to another
-  origin, so a malicious page can't press buttons through your browser.
+  origin, so a malicious page can't press buttons through your browser. The editing routes also check the
+  `Host` header against the bind addresses (and `DEVHUB_HOSTS`) and refuse a foreign `Origin`, which stops
+  DNS rebinding.
 - There is no TLS. Use a VPN, or put it behind a reverse proxy that adds TLS and a login.
 
-Treat `devhub.json` like a shell script, because it is one.
+Treat `devhub.json` like a shell script, because it is one, and the page can now edit it.
 
 ## Run it at login
 
