@@ -7,9 +7,9 @@ import {
   SegmentedControlItem,
 } from "@ui-sdk/react/segmented-control";
 import { Toggle, ToggleIcon } from "@ui-sdk/react/toggle";
-import { ago, lampTone, needsAttention, seconds, sinceText, statusOf, type Service } from "./api";
+import { ago, lampTone, needsAttention, seconds, statusOf, type Service } from "./api";
 import { LogView } from "./Logs";
-import { Lamp, buttonClass, confirm, sectionClass, textColor, useAct } from "./shared";
+import { Lamp, buttonClass, confirm, pill, textColor, useAct } from "./shared";
 
 /** Groups come from the config, in the order they first appear. */
 const groupLabel = (g: string) => g.charAt(0).toUpperCase() + g.slice(1);
@@ -19,37 +19,25 @@ export type Only = "all" | "attention";
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
 
 export function Health({ services, compact }: { services: Service[]; compact?: boolean }) {
-  const tones = services.map(lampTone);
   const attention = services.filter(needsAttention);
   const running = services.filter((s) => statusOf(s).tone === "good").length;
   const stopped = services.filter((s) => s.disabled || (s.kind === "process" && !s.want)).length;
-  const summary = [`${running} running`, stopped > 0 ? `${stopped} stopped` : ""]
+  const rest = [`${running} running`, stopped > 0 ? `${stopped} stopped` : ""]
     .filter(Boolean)
     .join(", ");
-  const ok = attention.length === 0;
   return (
-    <header className={compact ? "px-2 pt-1 pb-4" : "pt-6 pb-5"}>
-      <ul className="m-0 flex list-none flex-wrap gap-1 p-0" aria-label="Every service at a glance">
-        {services.map((s, i) => (
-          <li key={s.id}>
-            <a
-              href={`#/s/${s.id}`}
-              title={`${s.name}: ${statusOf(s).label}${s.errors > 0 ? `, ${plural(s.errors, "error")}` : ""}`}
-              aria-label={`${s.name}: ${statusOf(s).label}${s.errors > 0 ? `, ${plural(s.errors, "error")}` : ""}`}
-              className="grid size-8 place-items-center rounded-md border border-line bg-card hover:border-label"
-            >
-              <Lamp tone={tones[i]} busy={!!s.busy} />
-            </a>
-          </li>
-        ))}
-      </ul>
-      <h1 className={`title ${compact ? "mt-4 text-[30px]" : "mt-5 text-[52px]"}`}>
-        {ok
-          ? "All clear"
-          : `${attention.length} need${attention.length === 1 ? "s" : ""} attention`}
-      </h1>
-      <p className={`mt-2 text-label-2 ${compact ? "text-[13px]" : "text-[17px]"}`}>
-        {ok ? `${summary}.` : `${attention.map((s) => s.name).join(", ")}. ${summary}.`}
+    <header className={compact ? "px-2 pt-1 pb-3" : "pt-6 pb-4"}>
+      <h1 className={`title ${compact ? "text-[18px]" : "text-[34px]"}`}>Services</h1>
+      <p className={`mt-1 text-label-2 ${compact ? "text-[13px]" : "text-[15px]"}`}>
+        {attention.length > 0 && (
+          <>
+            <span className="font-semibold text-warn">
+              {attention.length} need{attention.length === 1 ? "s" : ""} attention
+            </span>
+            {", "}
+          </>
+        )}
+        {rest}.
       </p>
     </header>
   );
@@ -116,7 +104,7 @@ function Row({
   const quiet = st.tone === "good" || st.tone === "idle";
   return (
     <li
-      className={`flex items-center border-t-[0.5px] border-line first:border-t-0 ${selected ? "bg-accent text-on-accent" : ""}`}
+      className={`flex items-center border-t-[0.5px] border-line first:border-t-0 ${selected ? "bg-accent/10" : ""}`}
     >
       <a
         className={`flex min-h-16 min-w-0 flex-1 items-center gap-3 py-2.5 pr-1 pl-3 text-inherit no-underline lg:min-h-12 lg:py-1.5 ${selected ? "" : "hover:bg-muted"}`}
@@ -126,21 +114,13 @@ function Row({
         <Lamp tone={lampTone(s)} busy={!!s.busy} />
         <span className="flex min-w-0 flex-1 flex-col gap-0.5">
           <span className="text-[17px] font-semibold lg:text-[14px]">{s.name}</span>
-          <span
-            className={`flex flex-wrap items-center gap-x-3 text-[15px] lg:text-[12px] ${selected ? "opacity-80" : "text-label-2"}`}
-          >
-            <span className={quiet || selected ? "" : `font-semibold ${textColor[st.tone]}`}>
-              {st.label}
-            </span>
+          <span className="flex flex-wrap items-center gap-x-3 text-[15px] text-label-2 lg:text-[12px]">
+            <span className={quiet ? "" : `font-semibold ${textColor[st.tone]}`}>{st.label}</span>
             <Counts s={s} />
           </span>
         </span>
         {s.kind !== "task" && !s.disabled && (
-          <span
-            className={`num text-[13px] lg:text-[12px] ${selected ? "opacity-80" : "text-label-2"}`}
-          >
-            {ago(s.since)}
-          </span>
+          <span className={`num text-[13px] lg:text-[12px] text-label-2`}>{ago(s.since)}</span>
         )}
         <svg
           className="flex-none opacity-60 lg:hidden"
@@ -223,15 +203,11 @@ export function ServiceList({
     <>
       {sections.map((section) => (
         <section key={section.id} aria-label={section.label}>
-          <h2
-            className={`${sectionClass} flex items-baseline justify-between px-3 pt-6 pb-2 lg:pt-5 lg:pb-1.5`}
-          >
+          <h2 className="m-0 flex items-baseline justify-between px-3 pt-6 pb-2 text-[13px] font-medium text-label-2 lg:pt-5 lg:pb-1.5 lg:text-[12px]">
             {section.label}
-            <span className="num text-[13px] font-normal text-label-2 lg:text-[12px]">
-              {section.items.length}
-            </span>
+            <span className="num font-normal">{section.items.length}</span>
           </h2>
-          <ul className="m-0 list-none border-t border-label p-0">
+          <ul className="m-0 list-none overflow-hidden rounded-xl bg-card p-0 shadow-xs lg:rounded-none lg:bg-transparent lg:shadow-none">
             {section.items.map((s) => (
               <Row
                 key={s.id}
@@ -410,13 +386,22 @@ function Actions({ s }: { s: Service }) {
   );
 }
 
+function Fact({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <div className="min-w-0">
+      <dt className="text-[13px] text-label-2 lg:text-[12px]">{label}</dt>
+      <dd className="m-0 mt-0.5 text-[17px] font-medium lg:text-[14px]">{children}</dd>
+    </div>
+  );
+}
+
 export function Detail({ s, desktop }: { s: Service; services?: Service[]; desktop: boolean }) {
   const st = statusOf(s);
   return (
     <div className={desktop ? "flex min-h-0 flex-1 flex-col" : ""}>
       {!desktop && (
         <a
-          className="-ml-1.5 inline-flex min-h-11 items-center gap-0.5 px-1.5 text-[17px] no-underline"
+          className="-ml-1.5 inline-flex min-h-11 items-center gap-0.5 px-1.5 text-[17px] text-accent no-underline"
           href="#/"
         >
           <svg
@@ -435,48 +420,46 @@ export function Detail({ s, desktop }: { s: Service; services?: Service[]; deskt
           Services
         </a>
       )}
-      <h1 className="title mt-2 mb-4 text-[48px] lg:mt-0 lg:text-[44px]">{s.name}</h1>
-      <section
-        className="flex flex-col gap-4 rounded-md border border-line bg-card p-4 lg:flex-row lg:items-start lg:justify-between"
-        aria-label="Status"
-      >
-        <div className="min-w-0 lg:max-w-[46ch]">
-          <p className="m-0 flex flex-wrap items-baseline gap-x-3">
-            <span className="inline-flex items-center gap-2.5 text-[24px] font-semibold lg:text-[20px]">
-              <Lamp tone={lampTone(s)} busy={!!s.busy} />
+      <header className="mb-4 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+        <div className="min-w-0 lg:max-w-[60ch]">
+          <h1 className="title m-0 flex flex-wrap items-center gap-x-3 gap-y-2 text-[34px] lg:text-[22px]">
+            {s.name}
+            <span
+              className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-[15px] font-medium tracking-normal lg:px-2.5 lg:py-0.5 lg:text-[12px] ${pill[lampTone(s)]}`}
+            >
+              <Lamp tone={lampTone(s)} busy={!!s.busy} small />
               {st.label}
             </span>
-            {s.kind !== "task" && !s.disabled && (
-              <span className="num text-[15px] text-label-2 lg:text-[13px]">
-                {sinceText(s.since)}
-              </span>
-            )}
-          </p>
-          <div className="mt-3 grid gap-1.5 text-[15px] text-label-2 lg:text-[13px]">
-            {s.note && <p className="m-0 font-semibold text-warn">{s.note}</p>}
-            {(s.errors > 0 || s.warnings > 0) && (
-              <p className="m-0 flex flex-wrap items-center gap-x-4 text-label">
-                <Counts s={s} />
-                <span className="text-label-2">since the last start</span>
-              </p>
-            )}
-            {s.build && (
-              <p className="m-0">
-                Build{" "}
-                <span className={`font-semibold ${s.build.ok ? "text-good" : "text-bad"}`}>
-                  {s.build.ok ? "passed" : "failed"}
-                </span>{" "}
-                in {seconds(s.build.ms)}, {ago(s.build.at)} ago.
-              </p>
-            )}
-            {s.kind === "task" && s.detail && <p className="m-0">{s.detail}</p>}
-            <p className="m-0">{s.desc}</p>
-            {s.kind === "process" && s.restarts > 0 && (
-              <p className="m-0">Restarted {plural(s.restarts, "time")} since the hub started.</p>
-            )}
-          </div>
+          </h1>
+          <p className="mt-2 mb-0 text-[15px] text-label-2 lg:text-[13px]">{s.desc}</p>
         </div>
         <Actions s={s} />
+      </header>
+      <section
+        aria-label="Status"
+        className="mb-6 rounded-xl border border-line bg-card px-4 py-3.5 shadow-xs lg:mb-5 lg:rounded-lg lg:py-3"
+      >
+        <dl className="m-0 grid grid-cols-2 gap-x-6 gap-y-3 lg:grid-cols-[repeat(auto-fit,minmax(8.5rem,1fr))]">
+          {s.kind !== "task" && !s.disabled && <Fact label="Up for">{ago(s.since)}</Fact>}
+          <Fact label="Errors">
+            <span className={s.errors > 0 ? "text-bad" : ""}>{s.errors}</span>
+          </Fact>
+          <Fact label="Warnings">
+            <span className={s.warnings > 0 ? "text-warn" : ""}>{s.warnings}</span>
+          </Fact>
+          {s.build && (
+            <Fact label="Last build">
+              <span className={s.build.ok ? "" : "text-bad"}>
+                {s.build.ok ? "Passed" : "Failed"}, {seconds(s.build.ms)}
+              </span>
+            </Fact>
+          )}
+          {s.kind === "process" && <Fact label="Restarts">{s.restarts}</Fact>}
+          {s.kind === "task" && s.detail && <Fact label="Detail">{s.detail}</Fact>}
+        </dl>
+        {s.note && (
+          <p className="mt-3 mb-0 text-[15px] font-medium text-warn lg:text-[13px]">{s.note}</p>
+        )}
       </section>
       <LogView
         url={`/api/services/${s.id}/logs`}
