@@ -179,6 +179,11 @@ body {
   display: none;
 }
 
+/* The star sits inside a row that highlights as a whole, so the star must not paint its own hover. */
+[data-slot="toggle"]:hover:not([data-disabled]) {
+  background: transparent;
+}
+
 /* Status marks: the shape says the state, so color is never the only cue. */
 .lamp {
   display: inline-block;
