@@ -1,0 +1,56 @@
+{
+  "root": "~/code",
+  "services": [
+    {
+      "id": "api",
+      "name": "API server",
+      "group": "apps",
+      "kind": "process",
+      "desc": "Go API on port 8080. Rebuilds and restarts when you save source.",
+      "dir": "my-project",
+      "build": "go build -o bin/api ./cmd/api",
+      "run": "./bin/api",
+      "watch": ["my-project/cmd", "my-project/internal", "my-project/go.mod"],
+      "ready": "http://127.0.0.1:8080/healthz",
+      "links": [{ "label": "Open the API", "path": ":8080" }]
+    },
+    {
+      "id": "web",
+      "name": "Web app",
+      "group": "apps",
+      "kind": "process",
+      "desc": "Frontend dev server on port 5173.",
+      "dir": "my-project/web",
+      "run": "pnpm dev --port 5173",
+      "ready": "http://127.0.0.1:5173/",
+      "links": [{ "label": "Open the app", "path": ":5173" }]
+    },
+    {
+      "id": "database",
+      "name": "Database",
+      "group": "checks",
+      "kind": "check",
+      "desc": "Is Postgres accepting connections? Checked every 30 seconds.",
+      "interval": 30,
+      "check": "pg_isready -q -h 127.0.0.1",
+      "heartbeat": { "url": "https://hc-ping.com/${HEALTHCHECK_UUID}", "method": "GET" },
+      "buttons": [
+        {
+          "id": "restart",
+          "label": "Restart Postgres",
+          "confirm": "Connections drop for a few seconds.",
+          "cmd": "brew services restart postgresql"
+        }
+      ]
+    },
+    {
+      "id": "backup",
+      "name": "Backup",
+      "group": "tools",
+      "kind": "task",
+      "desc": "Runs on demand.",
+      "check": "tail -n 1 ~/backups/last-run.txt",
+      "buttons": [{ "id": "run", "label": "Run backup now", "cmd": "~/bin/backup.sh" }]
+    }
+  ]
+}

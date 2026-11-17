@@ -1,0 +1,19 @@
+# built files
+/devhub
+/devhub.new
+/devhub-final
+web/node_modules/
+web/dist/*
+!web/dist/.gitkeep
+
+# your own setup: personal config, scripts and secrets stay out of the repo
+/devhub.json
+/scripts/
+*.env
+state.json
+
+# tooling
+.claude/
+skills-lock.json
+.DS_Store
+*.log
