@@ -1,0 +1,79 @@
+@layer ui-sdk;
+@import "tailwindcss";
+@import "@ui-sdk/core/web.css" layer(components);
+
+/* Colors follow the system appearance through light-dark(); the page has no theme switch.
+   Measured contrast: secondary text 5.1:1 on the card in light and 6.4:1 in dark; status text colors
+   are all above 4.5:1 on their card. */
+@theme {
+  --color-bg: light-dark(#f2f2f7, #000000);
+  --color-card: light-dark(#ffffff, #1c1c1e);
+  --color-line: light-dark(#d1d1d6, #38383a);
+  --color-label: light-dark(#000000, #ffffff);
+  --color-label-2: light-dark(#6c6c70, #98989f);
+  --color-accent: light-dark(#0062d6, #0a84ff);
+  --color-good: light-dark(#1a7f45, #32d74b);
+  --color-warn: light-dark(#8f5d00, #ffd60a);
+  --color-bad: light-dark(#c4282d, #ff6961);
+  --color-muted: light-dark(#e5e5ea, #2c2c2e);
+  --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", Menlo, monospace;
+  --tabbar: 56px;
+}
+
+:root {
+  color-scheme: light dark;
+  --ui-background: var(--color-card);
+  --ui-foreground: var(--color-label);
+  --ui-muted: var(--color-muted);
+  --ui-muted-foreground: var(--color-label-2);
+  --ui-border: var(--color-line);
+  --ui-input: var(--color-line);
+  --ui-primary: var(--color-accent);
+  --ui-primary-foreground: #ffffff;
+  --ui-ring: var(--color-accent);
+  --ui-radius: 12px;
+  --ui-font-size: 17px;
+  --ui-font-sans: var(--font-sans);
+}
+
+body {
+  @apply bg-bg font-sans text-[17px] leading-[1.35] text-label antialiased;
+  -webkit-text-size-adjust: 100%;
+}
+
+/* ui-sdk parts that need page-level shaping (utilities can't reach their inner structure). */
+[data-slot="tabs-panel"] {
+  margin: 0;
+  padding: 0;
+}
+[data-slot="tabs-indicator"] {
+  display: none;
+}
+[data-slot="alert-dialog-content"] {
+  width: min(calc(100vw - 32px), 24rem);
+  padding: 20px;
+}
+[data-slot="alert-dialog-content"] [data-slot="stack"] {
+  display: grid;
+  gap: 8px;
+}
+[data-slot="alert-dialog-content"] [data-slot="row"] {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 18px;
+}
+[data-slot="alert-dialog-close"] {
+  min-height: 48px;
+  font-size: 17px;
+  font-weight: 600;
+  border-radius: 12px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition: none !important;
+    animation: none !important;
+  }
+}
