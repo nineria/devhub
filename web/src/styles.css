@@ -176,6 +176,10 @@ body {
   display: none;
 }
 
+[data-slot^="toast"] {
+  font-size: var(--control-text);
+}
+
 /* Lamps: the shape carries the state, so color is never the only cue. */
 .lamp {
   display: inline-block;
