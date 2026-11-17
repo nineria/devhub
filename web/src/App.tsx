@@ -144,7 +144,11 @@ export function App() {
             className={`mb-3 flex min-h-11 items-center justify-between rounded-xl px-3.5 text-[16px] font-semibold text-inherit no-underline focus-visible:outline-2 focus-visible:outline-accent ${logsActive ? "bg-card" : "hover:bg-muted"}`}
           >
             All logs
-            {total > 0 && <span className="text-[14px] text-bad">{total} errors</span>}
+            {total > 0 && (
+              <span className="text-[14px] text-bad">
+                {total} error{total === 1 ? "" : "s"}
+              </span>
+            )}
           </a>
           {list}
         </aside>

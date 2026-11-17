@@ -4,7 +4,7 @@
   "type": "module",
   "scripts": {
     "dev": "vp dev",
-    "build": "tsc --noEmit && vp build",
+    "build": "tsc --noEmit && rm -rf dist/assets dist/index.html dist/favicon.svg && vp build",
     "check": "vp check src"
   },
   "dependencies": {

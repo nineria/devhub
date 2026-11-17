@@ -4,6 +4,6 @@ import tailwindcss from "@tailwindcss/vite";
 
 export default defineConfig({
   plugins: lazyPlugins(() => [react(), tailwindcss()]),
-  build: { outDir: "dist", emptyOutDir: true },
+  build: { outDir: "dist", emptyOutDir: false },
   server: { proxy: { "/api": "http://127.0.0.1:8090" } },
 });

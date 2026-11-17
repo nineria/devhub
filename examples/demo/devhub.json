@@ -1,0 +1,66 @@
+{
+  "root": "examples/demo",
+  "services": [
+    {
+      "id": "api",
+      "name": "API server",
+      "group": "apps",
+      "kind": "process",
+      "desc": "Go API on port 8080. Rebuilds and restarts when you save source.",
+      "build": "echo 'compiling ./cmd/api'; sleep 1; echo 'build finished'",
+      "run": "sh scripts/api.sh",
+      "watch": ["src/api"]
+    },
+    {
+      "id": "web",
+      "name": "Web app",
+      "group": "apps",
+      "kind": "process",
+      "desc": "Frontend dev server on port 5173.",
+      "run": "sh scripts/web.sh"
+    },
+    {
+      "id": "worker",
+      "name": "Job worker",
+      "group": "apps",
+      "kind": "process",
+      "desc": "Background jobs.",
+      "run": "sh scripts/worker.sh"
+    },
+    {
+      "id": "postgres",
+      "name": "Postgres",
+      "group": "checks",
+      "kind": "check",
+      "desc": "Accepting connections. Checked every 30 seconds.",
+      "interval": 30,
+      "check": "true",
+      "buttons": [
+        {
+          "id": "restart",
+          "label": "Restart Postgres",
+          "confirm": "Connections drop for a few seconds.",
+          "cmd": "echo 'restarting postgres'; sleep 1; echo 'postgres is back'"
+        }
+      ]
+    },
+    {
+      "id": "redis",
+      "name": "Redis",
+      "group": "checks",
+      "kind": "check",
+      "desc": "Cache on port 6379. Checked every 30 seconds.",
+      "interval": 30,
+      "check": "true"
+    },
+    {
+      "id": "backup",
+      "name": "Nightly backup",
+      "group": "tools",
+      "kind": "task",
+      "desc": "Runs on demand.",
+      "check": "echo 'Last run at 02:14, 38 files, 1.2 GB'",
+      "buttons": [{ "id": "run", "label": "Run backup now", "cmd": "echo 'backing up...'; sleep 1; echo 'done'" }]
+    }
+  ]
+}
