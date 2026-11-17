@@ -163,7 +163,7 @@ body {
 [data-slot="segmented-control-item"] {
   font-size: var(--control-text);
   min-height: 0;
-  height: calc(var(--control) - 6px);
+  height: calc(var(--control) - 8px);
   border-radius: calc(var(--control-radius) - 3px);
 }
 [data-slot="segmented-control-item"][data-selected],
