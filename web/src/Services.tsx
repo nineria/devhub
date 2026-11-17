@@ -104,10 +104,10 @@ function Row({
   const quiet = st.tone === "good" || st.tone === "idle";
   return (
     <li
-      className={`flex items-center border-t-[0.5px] border-line first:border-t-0 ${selected ? "bg-accent/10" : ""}`}
+      className={`flex items-center border-t-[0.5px] border-line first:border-t-0 ${selected ? "bg-accent/10" : "hover:bg-muted"}`}
     >
       <a
-        className={`flex min-h-16 min-w-0 flex-1 items-center gap-3 py-2.5 pr-1 pl-3 text-inherit no-underline lg:min-h-12 lg:py-1.5 ${selected ? "" : "hover:bg-muted"}`}
+        className={`flex min-h-16 min-w-0 flex-1 items-center gap-3 py-2.5 pr-1 pl-3 text-inherit no-underline lg:min-h-12 lg:py-1.5`}
         href={`#/s/${s.id}`}
         aria-current={selected ? "page" : undefined}
       >
