@@ -3,9 +3,11 @@ package main
 import (
 	"errors"
 	"fmt"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -414,4 +416,57 @@ func TestLoopbackOnlyAndNormalize(t *testing.T) {
 		s.Buttons[0].ID != "do-it" || s.Buttons[1].ID != "do-it-2" {
 		t.Fatalf("normalize: %+v", s)
 	}
+}
+
+// listener starts a process that listens on a free port, and returns the port.
+func listener(t *testing.T) (*exec.Cmd, int) {
+	t.Helper()
+	l, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	port := l.Addr().(*net.TCPAddr).Port
+	l.Close()
+	cmd := exec.Command("python3", "-c", fmt.Sprintf(
+		"import socket,time\ns=socket.socket();s.setsockopt(socket.SOL_SOCKET,socket.SO_REUSEADDR,1);s.bind(('127.0.0.1',%d));s.listen();time.sleep(60)", port))
+	if err := cmd.Start(); err != nil {
+		t.Skip("python3 not available")
+	}
+	t.Cleanup(func() { cmd.Process.Kill(); cmd.Wait() })
+	waitFor(t, "the listener", 5*time.Second, func() bool { return portHolder(port) != nil })
+	return cmd, port
+}
+
+func TestABusyPortBlocksTheServiceInsteadOfCrashLooping(t *testing.T) {
+	if _, err := exec.LookPath("lsof"); err != nil {
+		t.Skip("lsof not available")
+	}
+	cmd, port := listener(t)
+	r := testRunner(t, Service{Run: "sleep 60", Port: port})
+	r.Start()
+	waitFor(t, "blocked", 5*time.Second, func() bool { return r.View().State == "blocked" })
+	v := r.View()
+	if v.Blocker == nil || v.Blocker.Pid != cmd.Process.Pid || v.Pid != 0 || v.Restarts != 0 {
+		t.Fatalf("view: %+v blocker %+v", v, v.Blocker)
+	}
+	if err := r.FreePort(); err != nil {
+		t.Fatal(err)
+	}
+	waitFor(t, "running after the port is freed", 8*time.Second, func() bool { return r.View().State == "running" })
+	if r.View().Blocker != nil {
+		t.Fatal("the blocker should be cleared")
+	}
+	r.Stop()
+}
+
+func TestBlockedServiceCanBeStopped(t *testing.T) {
+	if _, err := exec.LookPath("lsof"); err != nil {
+		t.Skip("lsof not available")
+	}
+	_, port := listener(t)
+	r := testRunner(t, Service{Run: "sleep 60", Port: port})
+	r.Start()
+	waitFor(t, "blocked", 5*time.Second, func() bool { return r.View().State == "blocked" })
+	r.Stop()
+	waitFor(t, "stopped", 5*time.Second, func() bool { v := r.View(); return v.State == "stopped" && v.Blocker == nil })
 }

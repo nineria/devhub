@@ -32,6 +32,7 @@ type Draft = {
   run: string;
   watch: string;
   ready: string;
+  port: string;
   check: string;
   interval: string;
   hbUrl: string;
@@ -52,6 +53,7 @@ const blank: Draft = {
   run: "",
   watch: "",
   ready: "",
+  port: "",
   check: "",
   interval: "30",
   hbUrl: "",
@@ -73,6 +75,7 @@ function toDraft(c: ServiceConfig): Draft {
     run: c.run ?? "",
     watch: (c.watch ?? []).join("\n"),
     ready: c.ready ?? "",
+    port: c.port ? String(c.port) : "",
     check: c.check ?? "",
     interval: String(c.interval ?? 30),
     hbUrl: c.heartbeat?.url ?? "",
@@ -95,6 +98,7 @@ function toConfig(d: Draft): ServiceConfig {
     run: d.run,
     watch: d.watch.split("\n"),
     ready: d.ready,
+    port: Math.max(0, Math.round(Number(d.port) || 0)),
     check: d.check,
     interval: Math.max(0, Math.round(Number(d.interval) || 0)),
     heartbeat: d.hbUrl.trim()
@@ -335,6 +339,14 @@ function Form({
               One folder or file per line, relative to the root. A change rebuilds and restarts.
             </p>
           </Field>
+          <Text
+            label="Port"
+            type="number"
+            value={d.port}
+            onChange={(v) => set("port", v)}
+            placeholder="8765"
+            hint="Optional. If another process is using it, the hub waits and offers to stop that process, instead of crashing in a loop."
+          />
           <Text
             label="Ready URL"
             mono

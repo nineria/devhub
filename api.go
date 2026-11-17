@@ -44,6 +44,7 @@ type View struct {
 	Errors   int          `json:"errors"`
 	Warnings int          `json:"warnings"`
 	Build    *BuildView   `json:"build,omitempty"`
+	Blocker  *Blocker     `json:"blocker,omitempty"` // what holds the service's port
 	Buttons  []ButtonView `json:"buttons"`
 	Links    []Link       `json:"links"`
 }
@@ -217,6 +218,14 @@ func (h *Hub) routes(ui fs.FS) http.Handler {
 			}
 			it.runner.Restart()
 			return "", nil
+		})
+	}))
+	mux.HandleFunc("POST /api/services/{id}/free-port", needsHeader(func(w http.ResponseWriter, r *http.Request) {
+		act(w, r, func(it item) (string, error) {
+			if err := processOnly(it); err != nil {
+				return "", err
+			}
+			return "", it.runner.FreePort()
 		})
 	}))
 	mux.HandleFunc("POST /api/services/{id}/disable", needsHeader(func(w http.ResponseWriter, r *http.Request) {
