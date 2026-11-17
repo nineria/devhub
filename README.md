@@ -1,8 +1,38 @@
+<div align="center">
+
 # Dev Hub
 
-A small supervisor and dashboard for the services you run on your own machine. One Go binary (about 7 MB,
-about 17 MB of memory) that starts your dev servers, rebuilds them when you save, watches their health and
-shows everything in a page that works on a phone and on a PC.
+**Run, watch and restart your local services from one page, on your PC or your phone.**
+
+One Go binary · about 17 MB of memory · no Kubernetes, no accounts
+
+[![CI](https://github.com/nineria/devhub/actions/workflows/ci.yml/badge.svg)](https://github.com/nineria/devhub/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/desktop-dark.png">
+  <img src="docs/screenshots/desktop-light.png" alt="Dev Hub on a PC: a list of services on the left, and the selected service with its status, actions and a live, filterable log on the right" width="900">
+</picture>
+
+<br><br>
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/phone-list-dark.png">
+  <img src="docs/screenshots/phone-list-light.png" alt="Dev Hub on a phone: services grouped as Apps, Checks and Tools, each with its status" width="250">
+</picture>
+&nbsp;&nbsp;&nbsp;
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/phone-detail-dark.png">
+  <img src="docs/screenshots/phone-detail-light.png" alt="A service on a phone: its status, rebuild and stop buttons, and a log with level and source filters" width="250">
+</picture>
+
+<sub>The same page on a PC and on a phone. These are the demo services in <a href="examples/demo">examples/demo</a>.</sub>
+
+</div>
+
+A small supervisor and dashboard for the services you run on your own machine. It starts your dev servers,
+rebuilds them when you save, watches their health, and shows everything in a page you can open from a
+second screen or from your phone.
 
 It does what [Tilt](https://tilt.dev) does for local processes, without Kubernetes and without a separate
 dashboard to babysit. You describe your services in one JSON file.
@@ -35,6 +65,15 @@ cp devhub.example.json devhub.json    # then edit it for your services
 ```
 
 Open <http://127.0.0.1:8090>.
+
+### Try the demo first
+
+The demo runs three pretend services (an API, a web server and a job worker that logs a warning and an
+error) and two checks, with no setup. From the repository root:
+
+```bash
+DEVHUB_CONFIG=examples/demo/devhub.json ./devhub
+```
 
 ## Configuration
 
