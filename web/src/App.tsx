@@ -150,7 +150,7 @@ export function App() {
           <a
             href="#/logs"
             aria-current={logsActive ? "page" : undefined}
-            className={`mb-3 flex h-(--control) items-center justify-between rounded-md px-3 text-[13px] font-medium text-inherit no-underline ${logsActive ? "bg-accent text-on-accent" : "hover:bg-muted"}`}
+            className={`mb-3 flex h-(--control) items-center justify-between rounded-md px-3 text-[13px] font-medium text-inherit no-underline ${logsActive ? "bg-accent/10" : "hover:bg-muted"}`}
           >
             All logs
             {total > 0 && (
@@ -186,7 +186,7 @@ export function App() {
             {selected ? <Detail s={selected} services={services} desktop={false} /> : list}
           </TabsPanel>
           <TabsPanel value="logs">
-            <h1 className="title pt-6 pb-3 text-[52px]">Logs</h1>
+            <h1 className="title pt-6 pb-3 text-[34px]">Logs</h1>
             <AllLogs services={services} />
           </TabsPanel>
           <TabsList

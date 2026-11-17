@@ -20,6 +20,13 @@ export const textColor: Record<Tone, string> = {
   idle: "text-label-2",
 };
 
+export const pill: Record<Tone, string> = {
+  good: "bg-good/12 text-good",
+  warn: "bg-warn/12 text-warn",
+  bad: "bg-bad/12 text-bad",
+  idle: "bg-label-2/12 text-label-2",
+};
+
 /** A status lamp. Its shape (circle, triangle, square, ring) says the state even without color. */
 export function Lamp({ tone, busy, small }: { tone: Tone; busy?: boolean; small?: boolean }) {
   return (
