@@ -245,7 +245,7 @@ function Actions({ s }: { s: Service }) {
     if (
       !(await confirm({
         title: `Delete ${s.name}?`,
-        message: "It stops and is removed from devhub.json. This can't be undone.",
+        message: "It stops and is removed from ostler.json. This can't be undone.",
         label: `Delete ${s.name}`,
         agent: `Deletes ${s.name}`,
       }))
@@ -423,7 +423,7 @@ function Actions({ s }: { s: Service }) {
               onClick={async () => {
                 const note =
                   s.kind === "process"
-                    ? "It stops and stays off, even after the hub restarts."
+                    ? "It stops and stays off, even after Ostler restarts."
                     : "It stops being checked and its heartbeat stops, so whatever watches the heartbeat will alert.";
                 if (
                   !(await ask(

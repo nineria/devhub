@@ -143,7 +143,7 @@ func jsonOut(w http.ResponseWriter, code int, v any) {
 // origin cannot add this header without a preflight, which the hub never answers.
 func needsHeader(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if r.Header.Get("X-Devhub") != "1" {
+		if r.Header.Get("X-Ostler") != "1" {
 			jsonOut(w, http.StatusForbidden, map[string]any{"ok": false, "error": "forbidden"})
 			return
 		}

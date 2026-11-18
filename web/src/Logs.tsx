@@ -13,7 +13,7 @@ import { sectionClass, toast } from "./shared";
 // Terminal color codes from the services' own output; built from the escape character on purpose.
 const ANSI = new RegExp(`${String.fromCharCode(27)}\\[[0-9;]*[A-Za-z]`, "g");
 
-/** Streams a log from the hub. Lines are batched so a chatty service doesn't re-render the page per line. */
+/** Streams a log from Ostler. Lines are batched so a chatty service doesn't re-render the page per line. */
 function useLogStream(url: string, cap: number) {
   const [lines, setLines] = useState<Line[] | null>(null);
   useEffect(() => {

@@ -4,22 +4,23 @@
 @import "@fontsource-variable/instrument-sans/wdth.css";
 @import "@fontsource-variable/jetbrains-mono/index.css";
 
-/* Neutral greys with one blue accent; color elsewhere means status. Measured contrast: secondary text on
-   the panel 6.1:1 in light and 6.8:1 in dark; status text on the panel at least 5.0:1, and on its own 12%
-   tint (a warn or error log row, or a status chip) at least 4.5:1 in both themes. */
+/* Warm stone neutrals with one copper accent, the colors of a stable: leather, lamp light, straw. Color
+   elsewhere means status. Measured contrast: secondary text on the panel 6.1:1 in light and 6.7:1 in
+   dark; the accent on the panel 7.2:1 and 8.6:1; status text on the panel at least 6.4:1, and on its own
+   12% tint (a warn or error log row, or a status chip) at least 4.5:1 in both themes. */
 @theme {
-  --color-bg: light-dark(#f6f7f9, #0e1013);
-  --color-card: light-dark(#ffffff, #15181d);
-  --color-line: light-dark(#e2e5ea, #262a31);
-  --color-label: light-dark(#18181b, #eceef2);
-  --color-label-2: light-dark(#5b6270, #9aa1ad);
-  --color-accent: light-dark(#2563eb, #6a9bff);
-  --color-on-accent: light-dark(#ffffff, #0e1013);
-  --color-focus: light-dark(#2563eb, #6a9bff);
+  --color-bg: light-dark(#f7f4ef, #12100d);
+  --color-card: light-dark(#fffdfa, #1a1713);
+  --color-line: light-dark(#e6dfd4, #2e2923);
+  --color-label: light-dark(#1f1a14, #f2ece3);
+  --color-label-2: light-dark(#6a5f52, #a89d8e);
+  --color-accent: light-dark(#9a3412, #f0a35e);
+  --color-on-accent: light-dark(#ffffff, #1a1008);
+  --color-focus: light-dark(#9a3412, #f0a35e);
   --color-good: light-dark(#166534, #34c77b);
   --color-warn: light-dark(#92400e, #f5b73d);
   --color-bad: light-dark(#b42318, #ff7b72);
-  --color-muted: light-dark(#edeff3, #1d2128);
+  --color-muted: light-dark(#f0ebe3, #221e19);
   --font-sans: "Instrument Sans Variable", system-ui, sans-serif;
   --font-mono: "JetBrains Mono Variable", ui-monospace, "SF Mono", Menlo, monospace;
   --tabbar: 56px;
@@ -60,6 +61,20 @@ body {
   @apply bg-bg font-sans text-[17px] leading-[1.35] text-label antialiased;
   -webkit-text-size-adjust: 100%;
   font-optical-sizing: auto;
+}
+
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--color-label);
+  font-weight: 750;
+  font-size: 17px;
+  letter-spacing: -0.02em;
+  text-decoration: none;
+}
+.brand svg {
+  color: var(--color-accent);
 }
 
 .title {
@@ -190,7 +205,7 @@ body {
 }
 [data-slot="segmented-control-item"][data-selected],
 [data-slot="segmented-control-item"][aria-checked="true"] {
-  background: light-dark(#ffffff, #353c47);
+  background: light-dark(#ffffff, #3a342c);
   color: var(--color-label);
   font-weight: 600;
   box-shadow:
