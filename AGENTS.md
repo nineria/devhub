@@ -18,3 +18,6 @@ Style: warm stone neutrals with one copper accent and a horseshoe mark (`web/src
 Before using ui-sdk, follow the ui-sdk skill if it's installed, and read
 `web/node_modules/@ui-sdk/react/docs/llms.txt`. To build a new component, also search
 `web/node_modules/@ui-sdk/react/docs/core.md` by heading, and read `rendering.md` next to it.
+
+Branches: open pull requests against `develop`. CI passing with no conflict squash-merges them
+(`.github/workflows/auto-merge.yml`); `develop` reaches `main` by a pull request merged by hand.
