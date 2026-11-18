@@ -135,12 +135,6 @@ See [`ostler.example.json`](ostler.example.json) for a complete example.
 | `OSTLER_HOSTS` | none | Extra host names the page may be opened with while editing is on, for example a VPN name. The bind addresses and `localhost` are always allowed. |
 | `OSTLER_STATE` | `~/.config/ostler/state.json` | Remembers which services you disabled. |
 
-### Coming from Dev Hub?
-
-Ostler was called Dev Hub. Your old setup keeps working: `devhub.json` and the `DEVHUB_*` variables are
-still read when their `ostler.json` and `OSTLER_*` versions are missing, and `~/.config/devhub` is used
-until `~/.config/ostler` exists. Rename them when you like.
-
 ## Use it from your phone
 
 Listen on your VPN address as well as localhost (Tailscale, NetBird, WireGuard and similar):
