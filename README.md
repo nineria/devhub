@@ -135,12 +135,6 @@ See [`ostler.example.json`](ostler.example.json) for a complete example.
 | `OSTLER_HOSTS` | none | Extra host names the page may be opened with while editing is on, for example a VPN name. The bind addresses and `localhost` are always allowed. |
 | `OSTLER_STATE` | `~/.config/ostler/state.json` | Remembers which services you disabled. |
 
-### Coming from Dev Hub?
-
-Ostler was called Dev Hub. Your old setup keeps working: `devhub.json` and the `DEVHUB_*` variables are
-still read when their `ostler.json` and `OSTLER_*` versions are missing, and `~/.config/devhub` is used
-until `~/.config/ostler` exists. Rename them when you like.
-
 ## Use it from your phone
 
 Listen on your VPN address as well as localhost (Tailscale, NetBird, WireGuard and similar):
@@ -208,6 +202,10 @@ make check                           # go vet, go test -race, type check and lin
 OSTLER_UI=web/dist ./ostler          # serve the page from disk, then rebuild it with:
 cd web && pnpm run build
 ```
+
+Open pull requests against `main`. When CI passes and there is no conflict, your own PR is squash-merged
+and its branch deleted ([`auto-merge.yml`](.github/workflows/auto-merge.yml)). `develop` is only a local branch for previewing
+deploys; it is not part of the release flow.
 
 The page is React with Tailwind, TanStack Query and [ui-sdk](https://ui-sdk.dev), built with Vite+.
 

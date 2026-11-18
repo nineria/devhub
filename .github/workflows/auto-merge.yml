@@ -1,4 +1,3 @@
-# (Merged automatically once ci passes, as the workflow itself describes.)
 # Squash-merges your own pull requests into main once the "ci" workflow has passed on them and they have no conflict,
 # and deletes their branch. A PR whose CI fails, or that conflicts, stays open. Drafts, forks and other people's PRs are
 # never merged. No code from a PR is ever run here.

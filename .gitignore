@@ -19,3 +19,4 @@ state.json
 skills-lock.json
 .DS_Store
 *.log
+/graphify-out/
