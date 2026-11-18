@@ -266,7 +266,7 @@ func TestZeroCountersAreNotErrors(t *testing.T) {
 func testHub(t *testing.T, services ...Service) (*Hub, *editor) {
 	t.Helper()
 	dir := t.TempDir()
-	path := filepath.Join(dir, "devhub.json")
+	path := filepath.Join(dir, "ostler.json")
 	cfg := &Config{Root: dir, RawRoot: dir}
 	e := newEditor(path, cfg, childEnv(), true, nil)
 	if err := e.write(services); err != nil {
@@ -376,15 +376,15 @@ func TestEditRoutesNeedHeaderHostAndOrigin(t *testing.T) {
 		res.Body.Close()
 		return res.StatusCode
 	}
-	ok := map[string]string{"X-Devhub": "1"}
+	ok := map[string]string{"X-Ostler": "1"}
 	body := `{"id":"n","kind":"check","check":"true"}`
 	if c := do("POST", "/api/services", body, nil); c != 403 {
 		t.Fatalf("no header: %d", c)
 	}
-	if c := do("POST", "/api/services", body, map[string]string{"X-Devhub": "1", "Host": "evil.example:8090"}); c != 403 {
+	if c := do("POST", "/api/services", body, map[string]string{"X-Ostler": "1", "Host": "evil.example:8090"}); c != 403 {
 		t.Fatalf("foreign host (DNS rebinding): %d", c)
 	}
-	if c := do("POST", "/api/services", body, map[string]string{"X-Devhub": "1", "Origin": "http://evil.example"}); c != 403 {
+	if c := do("POST", "/api/services", body, map[string]string{"X-Ostler": "1", "Origin": "http://evil.example"}); c != 403 {
 		t.Fatalf("foreign origin: %d", c)
 	}
 	if c := do("GET", "/api/services/c/config", "", nil); c != 403 {

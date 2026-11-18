@@ -69,7 +69,7 @@ export function useServices() {
   });
 }
 
-/** Whether the hub lets this page add, change and delete services. */
+/** Whether Ostler lets this page add, change and delete services. */
 export function useMeta() {
   return useQuery({ queryKey: ["meta"], queryFn: getMeta, staleTime: Infinity });
 }
@@ -89,7 +89,7 @@ export function useAct() {
       else toast(`${doing} didn't work`, { description: result.error ?? last });
     },
     onError: (_e, { doing }) =>
-      toast(`${doing} didn't work`, { description: "The hub didn't answer." }),
+      toast(`${doing} didn't work`, { description: "Ostler didn't answer." }),
     onSettled: async () => {
       await new Promise((r) => setTimeout(r, 400));
       await client.invalidateQueries({ queryKey: ["services"] });
@@ -132,10 +132,13 @@ export function useDesktop(): boolean {
 
 /** Starred services, kept in this browser. Storage can be blocked, so every access is guarded. */
 export function useStarred(): [Set<string>, (id: string) => void] {
-  const key = "devhub.starred";
+  const key = "ostler.starred";
   const [set, setSet] = useState<Set<string>>(() => {
     try {
-      return new Set<string>(JSON.parse(localStorage.getItem(key) ?? "[]"));
+      // Stars saved before the rename are still read, then saved under the new key on the next toggle.
+      return new Set<string>(
+        JSON.parse(localStorage.getItem(key) ?? localStorage.getItem("devhub.starred") ?? "[]"),
+      );
     } catch {
       return new Set();
     }

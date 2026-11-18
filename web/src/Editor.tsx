@@ -119,7 +119,7 @@ const KINDS: { id: Kind; label: string; hint: string }[] = [
   {
     id: "process",
     label: "Process",
-    hint: "A long-running command that the hub starts, restarts and rebuilds.",
+    hint: "A long-running command that Ostler starts, restarts and rebuilds.",
   },
   {
     id: "check",
@@ -237,8 +237,8 @@ function Form({
         <DialogTitle>{editing ? `Edit ${initial.name}` : "New service"}</DialogTitle>
         <DialogDescription>
           {editing
-            ? "Saving writes devhub.json and restarts this service with the new settings."
-            : "Saving writes it to devhub.json and starts it."}
+            ? "Saving writes ostler.json and restarts this service with the new settings."
+            : "Saving writes it to ostler.json and starts it."}
         </DialogDescription>
       </div>
 
@@ -285,10 +285,10 @@ function Form({
           label="Group"
           value={d.group}
           onChange={(v) => set("group", v)}
-          list="devhub-groups"
+          list="ostler-groups"
           hint="Services with the same group are listed together."
         />
-        <datalist id="devhub-groups">
+        <datalist id="ostler-groups">
           {groups.map((g) => (
             <option key={g} value={g} />
           ))}
@@ -345,7 +345,7 @@ function Form({
             value={d.port}
             onChange={(v) => set("port", v)}
             placeholder="8765"
-            hint="Optional. If another process is using it, the hub waits and offers to stop that process, instead of crashing in a loop."
+            hint="Optional. If another process is using it, Ostler waits and offers to stop that process, instead of crashing in a loop."
           />
           <Text
             label="Ready URL"
@@ -472,7 +472,7 @@ function Form({
                 value={l.path}
                 onChange={(v) => upd({ path: v })}
                 placeholder=":8080"
-                hint="A port like :8080 opens that port on the host you opened the hub from."
+                hint="A port like :8080 opens that port on the host you opened Ostler from."
               />
               <Button
                 type="button"

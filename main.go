@@ -1,5 +1,5 @@
-// devhub supervises the local services, runs the health checks and serves a phone-friendly page to
-// control them. One binary; the page is embedded. Listens only on the addresses in DEVHUB_BIND.
+// ostler supervises the local services, runs the health checks and serves a phone-friendly page to
+// control them. One binary; the page is embedded. Listens only on the addresses in OSTLER_BIND.
 package main
 
 import (
@@ -23,23 +23,44 @@ import (
 //go:embed all:web/dist
 var uiFiles embed.FS
 
-func envOr(key, fallback string) string {
-	if v := os.Getenv(key); v != "" {
+// getEnv reads OSTLER_<name>. The old DEVHUB_<name> still works, so a setup from before the rename keeps running.
+func getEnv(name string) string {
+	if v := os.Getenv("OSTLER_" + name); v != "" {
+		return v
+	}
+	return os.Getenv("DEVHUB_" + name)
+}
+
+func envOr(name, fallback string) string {
+	if v := getEnv(name); v != "" {
 		return v
 	}
 	return fallback
 }
 
+// configDir is ~/.config/ostler, or ~/.config/devhub while that is the only one that exists.
+func configDir() string {
+	if old := expandHome("~/.config/devhub"); !fileExists(expandHome("~/.config/ostler")) && fileExists(old) {
+		return old
+	}
+	return expandHome("~/.config/ostler")
+}
+
 func configPath() string {
-	if p := os.Getenv("DEVHUB_CONFIG"); p != "" {
+	if p := getEnv("CONFIG"); p != "" {
 		return p
 	}
 	if exe, err := os.Executable(); err == nil {
-		if p := filepath.Join(filepath.Dir(exe), "devhub.json"); fileExists(p) {
-			return p
+		for _, name := range []string{"ostler.json", "devhub.json"} {
+			if p := filepath.Join(filepath.Dir(exe), name); fileExists(p) {
+				return p
+			}
 		}
 	}
-	return "devhub.json"
+	if fileExists("devhub.json") && !fileExists("ostler.json") {
+		return "devhub.json"
+	}
+	return "ostler.json"
 }
 
 func fileExists(p string) bool { _, err := os.Stat(p); return err == nil }
@@ -74,28 +95,28 @@ func main() {
 	}
 	// Secrets (tokens, bot keys) live in env files, not in the config: KEY=value lines, one per line.
 	env := childEnv()
-	for _, f := range strings.Split(envOr("DEVHUB_ENV_FILES", "~/.config/devhub/env"), ",") {
+	for _, f := range strings.Split(envOr("ENV_FILES", filepath.Join(configDir(), "env")), ",") {
 		env = append(env, readEnvFile(strings.TrimSpace(f))...)
 	}
-	autostart := os.Getenv("DEVHUB_AUTOSTART") != "0"
+	autostart := getEnv("AUTOSTART") != "0"
 
 	// The services you disabled stay disabled after a restart.
-	statePath := expandHome(envOr("DEVHUB_STATE", "~/.config/devhub/state.json"))
+	statePath := expandHome(envOr("STATE", filepath.Join(configDir(), "state.json")))
 	disabled := loadDisabled(statePath)
-	binds := strings.Split(envOr("DEVHUB_BIND", "127.0.0.1"), ",")
+	binds := strings.Split(envOr("BIND", "127.0.0.1"), ",")
 
 	hub := &Hub{items: map[string]item{}}
 	hub.onChange = func() { saveDisabled(statePath, hub) }
 	// Editing from the page lets a request set a command, so it is on by default only when nothing but
-	// this machine can reach the hub. DEVHUB_EDIT=1 or 0 overrides that.
+	// this machine can reach the hub. OSTLER_EDIT=1 or 0 overrides that.
 	canEdit := loopbackOnly(binds)
-	switch os.Getenv("DEVHUB_EDIT") {
+	switch getEnv("EDIT") {
 	case "1":
 		canEdit = true
 	case "0":
 		canEdit = false
 	}
-	hosts := strings.Split(os.Getenv("DEVHUB_HOSTS"), ",")
+	hosts := strings.Split(getEnv("HOSTS"), ",")
 	for _, b := range binds {
 		hosts = append(hosts, strings.Trim(strings.TrimSpace(b), "[]"))
 	}
@@ -112,23 +133,23 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	// DEVHUB_UI serves the page from a folder instead of the copy inside the binary, so a page change
+	// OSTLER_UI serves the page from a folder instead of the copy inside the binary, so a page change
 	// needs only a rebuild of the page, not a restart of the hub and the services it runs.
-	if dir := os.Getenv("DEVHUB_UI"); dir != "" {
+	if dir := getEnv("UI"); dir != "" {
 		ui = os.DirFS(expandHome(dir))
 	}
-	port, _ := strconv.Atoi(envOr("DEVHUB_PORT", "8090"))
+	port, _ := strconv.Atoi(envOr("PORT", "8090"))
 	serve("hub", binds, port, hub.routes(ui))
 
-	// DEVHUB_PROXIES="8082=http://127.0.0.1:8081,..." also exposes other local web pages on the same
+	// OSTLER_PROXIES="8082=http://127.0.0.1:8081,..." also exposes other local web pages on the same
 	// addresses as the hub, so one VPN address reaches all of them.
-	for _, spec := range strings.Split(os.Getenv("DEVHUB_PROXIES"), ",") {
+	for _, spec := range strings.Split(getEnv("PROXIES"), ",") {
 		portText, target, ok := strings.Cut(strings.TrimSpace(spec), "=")
 		p, perr := strconv.Atoi(portText)
 		u, uerr := url.Parse(target)
 		if !ok || perr != nil || uerr != nil {
 			if strings.TrimSpace(spec) != "" {
-				log.Printf("DEVHUB_PROXIES: ignoring %q (expected PORT=URL)", spec)
+				log.Printf("OSTLER_PROXIES: ignoring %q (expected PORT=URL)", spec)
 			}
 			continue
 		}

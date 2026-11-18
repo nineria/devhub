@@ -7,7 +7,7 @@ web:
 	cd web && pnpm install --frozen-lockfile && pnpm run build
 
 build: web
-	go build -ldflags='-s -w' -o devhub .
+	go build -ldflags='-s -w' -o ostler .
 
 test:
 	go vet ./...
@@ -17,7 +17,7 @@ check: test
 	cd web && pnpm install --frozen-lockfile && pnpm exec tsc --noEmit && pnpm exec vp check src
 
 run: build
-	./devhub
+	./ostler
 
 clean:
-	rm -rf devhub web/dist/assets web/dist/index.html web/dist/favicon.svg
+	rm -rf ostler web/dist/assets web/dist/index.html web/dist/favicon.svg

@@ -1,9 +1,9 @@
 package main
 
-// Editing services from the page. The page may add, change and delete services, which writes devhub.json
+// Editing services from the page. The page may add, change and delete services, which writes ostler.json
 // and swaps the running service. This lets a request set a command, so it is only available when the hub
-// is reachable from this machine alone (or when DEVHUB_EDIT=1 says otherwise), and every request must
-// carry the X-Devhub header and come from a known Host and the same origin.
+// is reachable from this machine alone (or when OSTLER_EDIT=1 says otherwise), and every request must
+// carry the X-Ostler header and come from a known Host and the same origin.
 
 import (
 	"bytes"
@@ -21,7 +21,7 @@ import (
 	"time"
 )
 
-var errChanged = errors.New("devhub.json changed outside the page. Restart devhub to load it, then try again")
+var errChanged = errors.New("ostler.json changed outside the page. Restart Ostler to load it, then try again")
 
 // editor holds what the hub needs to start services and to write the config back.
 type editor struct {
@@ -79,7 +79,7 @@ func (e *editor) write(services []Service) error {
 	if fi, err := os.Stat(e.path); err == nil {
 		mode = fi.Mode().Perm()
 	}
-	tmp, err := os.CreateTemp(filepath.Dir(e.path), ".devhub-*.json")
+	tmp, err := os.CreateTemp(filepath.Dir(e.path), ".ostler-*.json")
 	if err != nil {
 		return err
 	}
@@ -363,7 +363,7 @@ func (h *Hub) writeErr(err error) error {
 // hub knows, and no foreign Origin. The Host check is what stops DNS rebinding, where a hostile page is
 // "same origin" with the hub and could otherwise send the header.
 func (h *Hub) allowedRequest(r *http.Request) bool {
-	if r.Header.Get("X-Devhub") != "1" {
+	if r.Header.Get("X-Ostler") != "1" {
 		return false
 	}
 	host := strings.ToLower(r.Host)

@@ -1,13 +1,15 @@
 # built files
-/devhub
-/devhub.new
-/devhub-final
+/ostler
+/ostler.new
+/ostler-final
 web/node_modules/
 web/dist/*
 !web/dist/.gitkeep
 
 # your own setup: personal config, scripts and secrets stay out of the repo
+/ostler.json
 /devhub.json
+/devhub
 /scripts/
 *.env
 state.json

@@ -1,3 +1,4 @@
+import { Brand } from "./Brand";
 import { useEffect, useState } from "react";
 import {
   AlertDialog,
@@ -116,7 +117,7 @@ export function App() {
     return (
       <main className="mx-auto max-w-160 px-4 py-10">
         <p className="text-[17px] text-label-2" role="status">
-          {isError ? "Can't reach the hub." : "Loading…"}
+          {isError ? "Can't reach Ostler." : "Loading…"}
         </p>
       </main>
     );
@@ -169,6 +170,9 @@ export function App() {
           className="flex min-h-0 flex-col overflow-y-auto border-r-[0.5px] border-line bg-card px-3 py-3"
           aria-label="Services"
         >
+          <div className="mb-3 flex h-(--control) items-center px-1">
+            <Brand />
+          </div>
           <Health services={services} compact />
           {stale}
           <a
@@ -204,6 +208,11 @@ export function App() {
     <div>
       <main className="mx-auto max-w-160 px-4 pt-[max(1rem,env(safe-area-inset-top))] pb-[calc(var(--tabbar)+env(safe-area-inset-bottom)+24px)]">
         <Tabs value={tab} onValueChange={(v) => go(v === "logs" ? "#/logs" : "#/")}>
+          {tab === "services" && !selected && (
+            <div className="pb-3">
+              <Brand />
+            </div>
+          )}
           {tab === "services" && !selected && <Health services={services} />}
           {stale}
           <TabsPanel value="services">

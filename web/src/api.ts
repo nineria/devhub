@@ -79,7 +79,7 @@ export async function getServices(): Promise<Service[]> {
 export type ActionResult = { ok: boolean; output?: string; error?: string };
 
 export async function post(path: string): Promise<ActionResult> {
-  const res = await fetch(`/api/${path}`, { method: "POST", headers: { "X-Devhub": "1" } });
+  const res = await fetch(`/api/${path}`, { method: "POST", headers: { "X-Ostler": "1" } });
   return res.json();
 }
 
@@ -111,7 +111,7 @@ export async function getMeta(): Promise<Meta> {
   return res.json();
 }
 
-const HEADERS = { "X-Devhub": "1", "Content-Type": "application/json" };
+const HEADERS = { "X-Ostler": "1", "Content-Type": "application/json" };
 
 export async function getConfig(id: string): Promise<ServiceConfig> {
   const res = await fetch(`/api/services/${encodeURIComponent(id)}/config`, { headers: HEADERS });
@@ -133,7 +133,7 @@ export async function saveService(
     });
     return await res.json();
   } catch {
-    return { ok: false, error: "The hub didn't answer." };
+    return { ok: false, error: "Ostler didn't answer." };
   }
 }
 
