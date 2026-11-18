@@ -209,6 +209,10 @@ OSTLER_UI=web/dist ./ostler          # serve the page from disk, then rebuild it
 cd web && pnpm run build
 ```
 
+Open pull requests against `develop`. When CI passes and there is no conflict, your own PR is squash-merged
+and its branch deleted ([`auto-merge.yml`](.github/workflows/auto-merge.yml)). `main` gets a release by a pull
+request from `develop`, which you merge yourself.
+
 The page is React with Tailwind, TanStack Query and [ui-sdk](https://ui-sdk.dev), built with Vite+.
 
 ## What it is not
