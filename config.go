@@ -20,7 +20,7 @@ type Link struct {
 	Path  string `json:"path"` // ":8765" or "/path"; the UI joins it with the host you opened the hub from
 }
 
-// Heartbeat reports a passing check to another monitor (Gatus, Uptime Kuma, healthchecks.io, ...), which
+// Heartbeat reports a passing check to another monitor (Uptime Kuma, healthchecks.io, ...), which
 // raises the alarm when the heartbeats stop. ${NAME} in the URL is filled from the environment, so secrets
 // stay out of the config file.
 type Heartbeat struct {
