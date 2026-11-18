@@ -34,7 +34,7 @@ dashboard to babysit. You add and edit your services in the page, or in one JSON
   version only if the build succeeds. A failed build keeps the old version running and shows the error.
 - **Readiness.** Marks a service as running once its URL answers, and shows "Not responding" when it stops.
 - **Health checks.** Runs a command every N seconds and shows whether it passes. Optionally sends a
-  heartbeat to another monitor (Gatus, Uptime Kuma, healthchecks.io) when it does.
+  heartbeat to another monitor (Uptime Kuma, healthchecks.io) when it does.
 - **Buttons.** Restart a remote service, turn something on or off, run a script. Anything risky asks first.
 - **Logs.** Per-service and combined logs with build and runtime sources, error and warning levels
   (guessed from the text), a text or `/regex/` filter with highlighting, Follow, Clear and Copy.
@@ -203,7 +203,7 @@ The page is React with Tailwind, TanStack Query and [ui-sdk](https://ui-sdk.dev)
 ## What it is not
 
 It has no resource dependencies or start order, no snapshots, no Kubernetes or container support, no
-authentication, and no notifications of its own. Use a monitor such as Gatus or Uptime Kuma, fed by the
+authentication, and no notifications of its own. Use a monitor such as Uptime Kuma (a push monitor), fed by the
 heartbeat, for alerts.
 
 ## License
