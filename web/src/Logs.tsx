@@ -186,7 +186,7 @@ export function LogView({
   title?: string;
 }) {
   const combined = names !== undefined;
-  const { lines, clear } = useLogStream(url, combined ? 1500 : 800);
+  const { lines, clear } = useLogStream(url, combined ? 4000 : 2000);
   const [text, setText] = useState("");
   const [level, setLevel] = useState<Level>("all");
   const [source, setSource] = useState<Source>("all");

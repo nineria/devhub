@@ -470,3 +470,33 @@ func TestBlockedServiceCanBeStopped(t *testing.T) {
 	r.Stop()
 	waitFor(t, "stopped", 5*time.Second, func() bool { v := r.View(); return v.State == "stopped" && v.Blocker == nil })
 }
+
+func TestCountsFollowTheLinesStillInTheLog(t *testing.T) {
+	l := newLogBuf("t", nil)
+	l.Add("run", "panic: boom")
+	l.Add("run", "warning: slow")
+	for i := 0; i < maxLogLines; i++ {
+		l.Add("run", "fine")
+	}
+	if e, w := l.Counts(); e != 0 || w != 0 {
+		t.Fatalf("the error and the warning left the log, but the counts are %d and %d", e, w)
+	}
+}
+
+func TestCountsStayRightAfterAResetAndOldLinesLeaving(t *testing.T) {
+	l := newLogBuf("t", nil)
+	l.Add("run", "panic: old")
+	l.ResetCounts() // a restart: the old error no longer counts
+	l.Add("run", "panic: new")
+	for i := 0; i < maxLogLines-2; i++ {
+		l.Add("run", "fine")
+	}
+	l.Add("run", "fine") // pushes "old" out of the log
+	if e, _ := l.Counts(); e != 1 {
+		t.Fatalf("errors %d, want 1 (the new one)", e)
+	}
+	l.Add("run", "fine") // pushes "new" out
+	if e, _ := l.Counts(); e != 0 {
+		t.Fatalf("errors %d, want 0", e)
+	}
+}
