@@ -50,6 +50,8 @@ type LogBuf struct {
 	subs   map[chan Line]struct{}
 	errs   int
 	warns  int
+	total  int // lines ever pushed; the oldest kept line is number total-len(lines)
+	since  int // lines numbered below this came before the last reset and are not counted
 }
 
 func newLogBuf(id string, parent *LogBuf) *LogBuf {
@@ -66,10 +68,24 @@ var allLogs = func() *LogBuf {
 func (l *LogBuf) push(line Line) {
 	l.mu.Lock()
 	if len(l.lines) >= l.max {
+		// The counts mean "lines you can find in the log", so a line that falls off the end stops counting.
+		first := l.total - len(l.lines)
+		for i, old := range l.lines[:len(l.lines)-l.max+1] {
+			if first+i < l.since {
+				continue
+			}
+			switch old.L {
+			case "error":
+				l.errs--
+			case "warn":
+				l.warns--
+			}
+		}
 		copy(l.lines, l.lines[len(l.lines)-l.max+1:])
 		l.lines = l.lines[:l.max-1]
 	}
 	l.lines = append(l.lines, line)
+	l.total++
 	switch line.L {
 	case "error":
 		l.errs++
@@ -123,15 +139,16 @@ func (l *LogBuf) Snapshot() []Line {
 // Clear empties the log and the counts, like Tilt's Clear button.
 func (l *LogBuf) Clear() {
 	l.mu.Lock()
-	l.lines, l.errs, l.warns = nil, 0, 0
+	l.lines, l.errs, l.warns, l.since = nil, 0, 0, l.total
 	l.mu.Unlock()
 }
 
 // ResetCounts starts the error and warning counts again; called when a build or a run begins, so the
-// counts always mean "since the last start".
+// counts always mean "since the last start". Lines already in the log are not counted again, so the page
+// may show an older error line that no longer counts.
 func (l *LogBuf) ResetCounts() {
 	l.mu.Lock()
-	l.errs, l.warns = 0, 0
+	l.errs, l.warns, l.since = 0, 0, l.total
 	l.mu.Unlock()
 }
 
