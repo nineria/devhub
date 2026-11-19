@@ -38,7 +38,7 @@ export function OpenOn({ compact }: { compact?: boolean }) {
   return (
     <section
       aria-label="Open Ostler"
-      className={`mb-3 rounded-md border-[0.5px] border-line px-3 py-2 ${compact ? "text-[12px]" : "text-[15px]"}`}
+      className={`mb-3 rounded-(--radius-card) border-[0.5px] border-line px-3 py-2 ${compact ? "text-[12px]" : "text-[15px]"}`}
     >
       <p className="m-0 mb-1 font-medium text-label-2">Open Ostler at</p>
       <ul className="m-0 list-none p-0">
@@ -277,7 +277,7 @@ export function ServiceList({
               )}
             </span>
           </h2>
-          <ul className="m-0 list-none overflow-hidden rounded-xl bg-card p-0 shadow-xs lg:rounded-none lg:bg-transparent lg:shadow-none">
+          <ul className="m-0 list-none overflow-hidden rounded-(--radius-card) bg-card p-0 shadow-xs lg:rounded-none lg:bg-transparent lg:shadow-none">
             {section.items.map((s) => (
               <Row
                 key={s.id}
@@ -564,7 +564,7 @@ export function Detail({ s, desktop }: { s: Service; services?: Service[]; deskt
       </header>
       <section
         aria-label="Status"
-        className="mb-6 rounded-xl border border-line bg-card px-4 py-3.5 shadow-xs lg:mb-5 lg:rounded-lg lg:py-3"
+        className="mb-6 rounded-(--radius-card) border border-line bg-card px-4 py-3.5 shadow-xs lg:mb-5 lg:py-3"
       >
         <dl className="m-0 grid grid-cols-2 gap-x-6 gap-y-3 lg:grid-cols-[repeat(auto-fit,minmax(8.5rem,1fr))]">
           {s.kind !== "task" && !s.disabled && <Fact label="Up for">{ago(s.since)}</Fact>}
