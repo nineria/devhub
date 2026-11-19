@@ -74,8 +74,8 @@ export function useMeta() {
   return useQuery({ queryKey: ["meta"], queryFn: getMeta, staleTime: Infinity });
 }
 
-/** Opens the service editor: for a new service, or for the one with this id. */
-export const EditorContext = createContext<(id?: string) => void>(() => {});
+/** Opens the service editor: for a new service (optionally in a group), or for the one with this id. */
+export const EditorContext = createContext<(id?: string, group?: string) => void>(() => {});
 export const useEditor = () => useContext(EditorContext);
 
 /** Presses a button on a service, reports the result in a toast, then refreshes the list. */

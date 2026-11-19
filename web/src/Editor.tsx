@@ -522,7 +522,7 @@ export function ServiceEditor({
   groups,
   onClose,
 }: {
-  target: { id?: string } | null;
+  target: { id?: string; group?: string } | null;
   groups: string[];
   onClose: () => void;
 }) {
@@ -556,8 +556,10 @@ export function ServiceEditor({
           </>
         ) : target ? (
           <Form
-            key={id ?? "new"}
-            initial={id && config.data ? toDraft(config.data) : blank}
+            key={id ?? `new:${target.group ?? ""}`}
+            initial={
+              id && config.data ? toDraft(config.data) : { ...blank, group: target.group ?? "" }
+            }
             editing={!!id}
             groups={groups}
             root={meta.data?.root}

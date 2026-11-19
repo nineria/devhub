@@ -195,6 +195,8 @@ export function ServiceList({
     return only === "attention" ? needsAttention(s) : true;
   };
   const visible = services.filter(keep);
+  const canEdit = useMeta().data?.canEdit === true;
+  const openEditor = useEditor();
   const sections: { id: string; label: string; items: Service[] }[] = [
     { id: "starred", label: "Starred", items: visible.filter((s) => starred.has(s.id)) },
     ...[...new Set(services.map((s) => s.group))].map((g) => ({
@@ -217,7 +219,31 @@ export function ServiceList({
         <section key={section.id} aria-label={section.label}>
           <h2 className="m-0 flex items-baseline justify-between px-3 pt-6 pb-2 text-[13px] font-medium text-label-2 lg:pt-5 lg:pb-1.5 lg:text-[12px]">
             {section.label}
-            <span className="num font-normal">{section.items.length}</span>
+            <span className="flex items-center gap-1">
+              <span className="num font-normal">{section.items.length}</span>
+              {canEdit && section.id !== "starred" && section.id !== "" && (
+                <button
+                  type="button"
+                  className="-my-2 -mr-2 inline-flex size-8 cursor-pointer items-center justify-center rounded-full border-0 bg-transparent p-0 text-label-2 hover:bg-muted hover:text-accent"
+                  aria-label={`Add service to ${section.label}`}
+                  title={`Add service to ${section.label}`}
+                  onClick={() => openEditor(undefined, section.id)}
+                >
+                  <svg
+                    width="16"
+                    height="16"
+                    viewBox="0 0 16 16"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.75"
+                    strokeLinecap="round"
+                    aria-hidden="true"
+                  >
+                    <path d="M8 3v10M3 8h10" />
+                  </svg>
+                </button>
+              )}
+            </span>
           </h2>
           <ul className="m-0 list-none overflow-hidden rounded-xl bg-card p-0 shadow-xs lg:rounded-none lg:bg-transparent lg:shadow-none">
             {section.items.map((s) => (
