@@ -8,7 +8,7 @@ import {
 } from "@ui-sdk/react/segmented-control";
 import { Switch, SwitchThumb } from "@ui-sdk/react/switch";
 import { post, type Line } from "./api";
-import { sectionClass, toast } from "./shared";
+import { copyText, sectionClass, toast } from "./shared";
 
 // Terminal color codes from the services' own output; built from the escape character on purpose.
 const ANSI = new RegExp(`${String.fromCharCode(27)}\\[[0-9;]*[A-Za-z]`, "g");
@@ -16,8 +16,11 @@ const ANSI = new RegExp(`${String.fromCharCode(27)}\\[[0-9;]*[A-Za-z]`, "g");
 /** Streams a log from Ostler. Lines are batched so a chatty service doesn't re-render the page per line. */
 function useLogStream(url: string, cap: number) {
   const [lines, setLines] = useState<Line[] | null>(null);
+  // Every line received, so "new lines" can still be counted once the buffer is full and stops growing.
+  const [received, setReceived] = useState(0);
   useEffect(() => {
     setLines(null);
+    setReceived(0);
     const es = new EventSource(url);
     let pending: Line[] = [];
     let first = true;
@@ -26,6 +29,7 @@ function useLogStream(url: string, cap: number) {
       const batch = pending;
       pending = [];
       first = false;
+      setReceived((n) => n + batch.length);
       setLines((prev) => [...(prev ?? []), ...batch].slice(-cap));
     }, 400);
     es.onmessage = (e) => {
@@ -38,21 +42,26 @@ function useLogStream(url: string, cap: number) {
       clearInterval(flush);
     };
   }, [url, cap]);
-  return { lines, clear: () => setLines([]) };
+  return { lines, received, clear: () => setLines([]) };
 }
 
-/** "/pattern/" is a regular expression; anything else is a plain, case-insensitive match. */
-function toRegExp(text: string): RegExp | null {
+/**
+ * "/pattern/" is a regular expression; anything else is a plain, case-insensitive match.
+ * `invalid` is set when the text is written as /pattern/ but doesn't compile, so the page can say
+ * that it is matching the text literally instead.
+ */
+function toRegExp(text: string): { re: RegExp | null; invalid: boolean } {
   const t = text.trim();
-  if (!t) return null;
+  if (!t) return { re: null, invalid: false };
+  let invalid = false;
   if (t.length > 2 && t.startsWith("/") && t.endsWith("/")) {
     try {
-      return new RegExp(t.slice(1, -1), "gi");
+      return { re: new RegExp(t.slice(1, -1), "gi"), invalid: false };
     } catch {
-      /* not a valid pattern yet: fall back to plain text */
+      invalid = true;
     }
   }
-  return new RegExp(t.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "gi");
+  return { re: new RegExp(t.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "gi"), invalid };
 }
 
 const clock = (t: number) => new Date(t).toLocaleTimeString([], { hour12: false });
@@ -82,24 +91,6 @@ function highlight(text: string, re: RegExp | null): ReactNode {
   }
   parts.push(text.slice(last));
   return parts;
-}
-
-function copyText(text: string): boolean {
-  // Over plain http (a VPN address, say) the clipboard API is unavailable, so fall back to a hidden field.
-  if (navigator.clipboard && window.isSecureContext) {
-    void navigator.clipboard.writeText(text);
-    return true;
-  }
-  const area = document.createElement("textarea");
-  area.value = text;
-  area.setAttribute("readonly", "");
-  area.style.position = "fixed";
-  area.style.opacity = "0";
-  document.body.appendChild(area);
-  area.select();
-  const ok = document.execCommand("copy");
-  area.remove();
-  return ok;
 }
 
 type Level = "all" | "error" | "warn";
@@ -160,7 +151,7 @@ const Row = memo(function Row({
         </span>
       </div>
       {open && (
-        <div className="mt-1 mb-1.5 rounded bg-bg px-2.5 py-2 text-[12px] text-label-2">
+        <div className="mt-1 mb-1.5 rounded-(--radius-control) bg-bg px-2.5 py-2 text-[12px] text-label-2">
           <div>
             {clockMs(l.t)} · {l.s}
             {service ? ` · ${service}` : ""} · {l.l}
@@ -186,7 +177,8 @@ export function LogView({
   title?: string;
 }) {
   const combined = names !== undefined;
-  const { lines, clear } = useLogStream(url, combined ? 4000 : 2000);
+  const { lines, received, clear } = useLogStream(url, combined ? 4000 : 2000);
+  const [pausedAt, setPausedAt] = useState(0);
   const [text, setText] = useState("");
   const [level, setLevel] = useState<Level>("all");
   const [source, setSource] = useState<Source>("all");
@@ -194,7 +186,7 @@ export function LogView({
   const [wrap, setWrap] = useState(() => !window.matchMedia("(min-width: 1024px)").matches);
   const box = useRef<HTMLDivElement>(null);
 
-  const re = useMemo(() => toRegExp(text), [text]);
+  const { re, invalid } = useMemo(() => toRegExp(text), [text]);
   const shown = useMemo(() => {
     return (lines ?? []).filter((l) => {
       if (l.m.trim() === "") return false; // blank lines add nothing
@@ -212,6 +204,14 @@ export function LogView({
   useEffect(() => {
     if (follow && box.current) box.current.scrollTop = box.current.scrollHeight;
   }, [shown, follow, wrap]);
+
+  // Remember how many lines had arrived when following paused, to show how many came since.
+  useEffect(() => {
+    if (!follow) setPausedAt(received);
+    // Only the moment following pauses matters, not every later line.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [follow]);
+  const fresh = follow ? 0 : Math.max(0, received - pausedAt);
 
   // Scrolling up pauses following; reaching the bottom again resumes it, like a live log.
   const onScroll = () => {
@@ -255,6 +255,11 @@ export function LogView({
         </div>
       </div>
 
+      {invalid && (
+        <p id="log-pattern-hint" role="status" className="m-0 mb-1.5 text-[13px] text-warn">
+          Not a valid pattern, so this matches the text as typed.
+        </p>
+      )}
       <div className="mb-2 grid gap-2 lg:flex lg:flex-wrap lg:items-center">
         <Input
           className="lg:w-64"
@@ -262,6 +267,8 @@ export function LogView({
           placeholder="Filter, or /regex/"
           value={text}
           onValueChange={(v) => setText(v)}
+          aria-invalid={invalid || undefined}
+          aria-describedby={invalid ? "log-pattern-hint" : undefined}
         />
         <SegmentedControl
           aria-label="Level"
@@ -295,8 +302,9 @@ export function LogView({
           <Button
             className="flex-1 lg:flex-none lg:px-3.5"
             onClick={async () => {
-              await post(clearPath);
-              clear();
+              const res = await post(clearPath);
+              if (res.ok) clear();
+              else toast("Couldn't clear the log", { description: res.error });
             }}
           >
             Clear
@@ -305,7 +313,7 @@ export function LogView({
       </div>
 
       <div
-        className={`relative overflow-hidden rounded-md border border-line bg-card ${fill ? "flex min-h-0 flex-1 flex-col" : ""}`}
+        className={`relative overflow-hidden rounded-(--radius-card) border border-line bg-card ${fill ? "flex min-h-0 flex-1 flex-col" : ""}`}
       >
         <div
           ref={box}
@@ -338,7 +346,7 @@ export function LogView({
             data-variant="solid"
             onClick={() => setFollow(true)}
           >
-            Jump to latest
+            {fresh > 0 ? `Jump to latest (${fresh > 999 ? "999+" : fresh} new)` : "Jump to latest"}
           </Button>
         )}
       </div>

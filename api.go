@@ -94,6 +94,8 @@ type Hub struct {
 	edit *editor
 	// onChange is called after a service is disabled or enabled, so the choice survives a restart.
 	onChange func()
+	// urls are the addresses the page can be opened at, shown in the page and at startup.
+	urls []string
 }
 
 // streamLogs sends a log's lines as server-sent events until the reader goes away.

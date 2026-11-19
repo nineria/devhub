@@ -6,6 +6,7 @@ import {
   SegmentedControlIndicator,
   SegmentedControlItem,
 } from "@ui-sdk/react/segmented-control";
+import { Menu, MenuContent, MenuItem, MenuTrigger } from "@ui-sdk/react/menu";
 import { Toggle, ToggleIcon } from "@ui-sdk/react/toggle";
 import { ago, lampTone, needsAttention, seconds, statusOf, type Service } from "./api";
 import { LogView } from "./Logs";
@@ -15,6 +16,7 @@ import {
   Lamp,
   buttonClass,
   confirm,
+  copyText,
   pill,
   textColor,
   toast,
@@ -29,6 +31,37 @@ const groupLabel = (g: string) => (g ? g.charAt(0).toUpperCase() + g.slice(1) : 
 export type Only = "all" | "attention";
 
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
+
+/** Where to open Ostler: each address with a Copy button, to type or send to another device. */
+export function OpenOn({ compact }: { compact?: boolean }) {
+  const urls = useMeta().data?.urls;
+  const list = urls?.length ? urls : [location.origin];
+  return (
+    <section
+      aria-label="Open Ostler"
+      className={`mb-3 rounded-(--radius-card) border-[0.5px] border-line px-3 py-2 ${compact ? "text-[12px]" : "text-[15px]"}`}
+    >
+      <p className="m-0 mb-1 font-medium text-label-2">Open Ostler at</p>
+      <ul className="m-0 list-none p-0">
+        {list.map((u) => (
+          <li key={u} className="flex items-center justify-between gap-2 py-0.5">
+            <a href={u} className="num min-w-0 truncate text-inherit">
+              {u}
+            </a>
+            <Button
+              onClick={() =>
+                toast(copyText(u) ? "Copied address" : "Couldn't copy", { description: u })
+              }
+              aria-label={`Copy ${u}`}
+            >
+              Copy
+            </Button>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
 
 export function Health({ services, compact }: { services: Service[]; compact?: boolean }) {
   const attention = services.filter(needsAttention);
@@ -195,6 +228,8 @@ export function ServiceList({
     return only === "attention" ? needsAttention(s) : true;
   };
   const visible = services.filter(keep);
+  const canEdit = useMeta().data?.canEdit === true;
+  const openEditor = useEditor();
   const sections: { id: string; label: string; items: Service[] }[] = [
     { id: "starred", label: "Starred", items: visible.filter((s) => starred.has(s.id)) },
     ...[...new Set(services.map((s) => s.group))].map((g) => ({
@@ -217,9 +252,33 @@ export function ServiceList({
         <section key={section.id} aria-label={section.label}>
           <h2 className="m-0 flex items-baseline justify-between px-3 pt-6 pb-2 text-[13px] font-medium text-label-2 lg:pt-5 lg:pb-1.5 lg:text-[12px]">
             {section.label}
-            <span className="num font-normal">{section.items.length}</span>
+            <span className="flex items-center gap-1">
+              <span className="num font-normal">{section.items.length}</span>
+              {canEdit && section.id !== "starred" && section.id !== "" && (
+                <button
+                  type="button"
+                  className="-my-2 -mr-2 inline-flex size-8 cursor-pointer items-center justify-center rounded-full border-0 bg-transparent p-0 text-label-2 hover:bg-muted hover:text-accent"
+                  aria-label={`Add service to ${section.label}`}
+                  title={`Add service to ${section.label}`}
+                  onClick={() => openEditor(undefined, section.id)}
+                >
+                  <svg
+                    width="16"
+                    height="16"
+                    viewBox="0 0 16 16"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.75"
+                    strokeLinecap="round"
+                    aria-hidden="true"
+                  >
+                    <path d="M8 3v10M3 8h10" />
+                  </svg>
+                </button>
+              )}
+            </span>
           </h2>
-          <ul className="m-0 list-none overflow-hidden rounded-xl bg-card p-0 shadow-xs lg:rounded-none lg:bg-transparent lg:shadow-none">
+          <ul className="m-0 list-none overflow-hidden rounded-(--radius-card) bg-card p-0 shadow-xs lg:rounded-none lg:bg-transparent lg:shadow-none">
             {section.items.map((s) => (
               <Row
                 key={s.id}
@@ -265,31 +324,45 @@ function Actions({ s }: { s: Service }) {
   const stopped = s.kind === "process" && !s.want;
   const path = (what: string) => `services/${s.id}/${what}`;
   const live = !s.disabled;
+  const name = <span className="sr-only"> {s.name}</span>;
+
+  const start = () =>
+    act({
+      path: path("start"),
+      doing: `Starting ${s.name}`,
+      done: `${s.name} is starting`,
+    });
+  const stop = () =>
+    act({
+      path: path("stop"),
+      doing: `Stopping ${s.name}`,
+      done: `${s.name} stopped`,
+      undo: { label: "Undo", onAction: () => void start() },
+    });
+  const disable = async () => {
+    const note =
+      s.kind === "process"
+        ? "It stops and stays off, even after Ostler restarts."
+        : "It stops being checked and its heartbeat stops, so whatever watches the heartbeat will alert.";
+    if (!(await ask(`Disable ${s.name}?`, note, `Disable ${s.name}`, `Disables ${s.name}`))) return;
+    await act({
+      path: path("disable"),
+      doing: `Disabling ${s.name}`,
+      done: `${s.name} disabled`,
+    });
+  };
+
+  // Everything that is rarely needed, or can't be undone, lives in the menu, away from Restart.
+  const menu: { value: string; label: string; bad?: boolean; run: () => void }[] = [];
+  if (canEdit) menu.push({ value: "edit", label: "Edit", run: () => openEditor(s.id) });
+  if (live) menu.push({ value: "disable", label: "Disable", bad: true, run: () => void disable() });
+  if (canEdit) menu.push({ value: "delete", label: "Delete", bad: true, run: () => void remove() });
 
   const secondary: ReactNode[] = [];
   if (s.kind === "process" && live && !stopped) {
     secondary.push(
-      <Button
-        key="stop"
-        className={buttonClass}
-        onClick={async () => {
-          if (
-            !(await ask(
-              `Stop ${s.name}?`,
-              "It stays stopped until you start it again.",
-              `Stop ${s.name}`,
-              `Stops ${s.name}`,
-            ))
-          )
-            return;
-          await act({
-            path: path("stop"),
-            doing: `Stopping ${s.name}`,
-            done: `${s.name} stopped`,
-          });
-        }}
-      >
-        Stop {s.name}
+      <Button key="stop" className={buttonClass} onClick={() => void stop()}>
+        Stop{name}
       </Button>,
     );
   }
@@ -340,7 +413,7 @@ function Actions({ s }: { s: Service }) {
           act({ path: path("enable"), doing: `Enabling ${s.name}`, done: `${s.name} enabled` })
         }
       >
-        Enable {s.name}
+        Enable{name}
       </Button>,
     );
   }
@@ -354,22 +427,10 @@ function Actions({ s }: { s: Service }) {
             data-variant="solid"
             onClick={async () => {
               if (stopped) {
-                await act({
-                  path: path("start"),
-                  doing: `Starting ${s.name}`,
-                  done: `${s.name} is starting`,
-                });
+                await start();
                 return;
               }
-              if (
-                !(await ask(
-                  `Restart ${s.name}?`,
-                  "It rebuilds first. If the build fails, the running version stays up.",
-                  `Restart ${s.name}`,
-                  `Rebuilds and restarts ${s.name}`,
-                ))
-              )
-                return;
+              // No question: the build runs first, and a failed build leaves the old version up.
               await act({
                 path: path("restart"),
                 doing: `Restarting ${s.name}`,
@@ -377,10 +438,10 @@ function Actions({ s }: { s: Service }) {
               });
             }}
           >
-            {stopped ? `Start ${s.name}` : "Rebuild and restart"}
+            {stopped ? "Start" : "Rebuild and restart"}
+            {name}
           </Button>
         )}
-        {secondary.length > 0 && <div className="grid gap-2.5 lg:contents">{secondary}</div>}
         {s.blocker && live && (
           <Button
             className={buttonClass}
@@ -406,44 +467,20 @@ function Actions({ s }: { s: Service }) {
             Free port {s.blocker.port} and start
           </Button>
         )}
-        {canEdit && (
-          <Button className={buttonClass} onClick={() => openEditor(s.id)}>
-            Edit {s.name}
-          </Button>
-        )}
-        {canEdit && (
-          <Button className={`${buttonClass} text-bad`} onClick={remove}>
-            Delete {s.name}
-          </Button>
-        )}
-        {live && (
-          <>
-            <Button
-              className={`${buttonClass} text-bad`}
-              onClick={async () => {
-                const note =
-                  s.kind === "process"
-                    ? "It stops and stays off, even after Ostler restarts."
-                    : "It stops being checked and its heartbeat stops, so whatever watches the heartbeat will alert.";
-                if (
-                  !(await ask(
-                    `Disable ${s.name}?`,
-                    note,
-                    `Disable ${s.name}`,
-                    `Disables ${s.name}`,
-                  ))
-                )
-                  return;
-                await act({
-                  path: path("disable"),
-                  doing: `Disabling ${s.name}`,
-                  done: `${s.name} disabled`,
-                });
-              }}
-            >
-              Disable {s.name}
-            </Button>
-          </>
+        {secondary.length > 0 && <div className="grid gap-2.5 lg:contents">{secondary}</div>}
+        {menu.length > 0 && (
+          <Menu onAction={(v) => menu.find((m) => m.value === v)?.run()}>
+            <MenuTrigger className={`${buttonClass} btn`}>
+              More<span className="sr-only"> actions for {s.name}</span>
+            </MenuTrigger>
+            <MenuContent>
+              {menu.map((m) => (
+                <MenuItem key={m.value} value={m.value} className={m.bad ? "text-bad" : undefined}>
+                  {m.label}
+                </MenuItem>
+              ))}
+            </MenuContent>
+          </Menu>
         )}
       </div>
       {s.busy && (
@@ -506,7 +543,7 @@ export function Detail({ s, desktop }: { s: Service; services?: Service[]; deskt
       </header>
       <section
         aria-label="Status"
-        className="mb-6 rounded-xl border border-line bg-card px-4 py-3.5 shadow-xs lg:mb-5 lg:rounded-lg lg:py-3"
+        className="mb-6 rounded-(--radius-card) border border-line bg-card px-4 py-3.5 shadow-xs lg:mb-5 lg:py-3"
       >
         <dl className="m-0 grid grid-cols-2 gap-x-6 gap-y-3 lg:grid-cols-[repeat(auto-fit,minmax(8.5rem,1fr))]">
           {s.kind !== "task" && !s.disabled && <Fact label="Up for">{ago(s.since)}</Fact>}

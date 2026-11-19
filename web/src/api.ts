@@ -79,8 +79,14 @@ export async function getServices(): Promise<Service[]> {
 export type ActionResult = { ok: boolean; output?: string; error?: string };
 
 export async function post(path: string): Promise<ActionResult> {
-  const res = await fetch(`/api/${path}`, { method: "POST", headers: { "X-Ostler": "1" } });
-  return res.json();
+  try {
+    const res = await fetch(`/api/${path}`, { method: "POST", headers: { "X-Ostler": "1" } });
+    const body = (await res.json().catch(() => null)) as ActionResult | null;
+    if (body) return res.ok ? body : { ...body, ok: false };
+    return { ok: false, error: `Ostler answered with ${res.status}.` };
+  } catch {
+    return { ok: false, error: "Ostler didn't answer." };
+  }
 }
 
 /** What the config file holds for one service: the page edits this, not the view. */
@@ -103,7 +109,7 @@ export type ServiceConfig = {
   links?: { label: string; path: string }[];
 };
 
-export type Meta = { canEdit: boolean; root?: string };
+export type Meta = { canEdit: boolean; root?: string; urls?: string[] };
 
 export async function getMeta(): Promise<Meta> {
   const res = await fetch("/api/meta");
