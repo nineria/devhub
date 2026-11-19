@@ -78,14 +78,22 @@ export function useMeta() {
 export const EditorContext = createContext<(id?: string, group?: string) => void>(() => {});
 export const useEditor = () => useContext(EditorContext);
 
+type ActOptions = {
+  path: string;
+  doing: string;
+  done: string;
+  /** Adds an action button, such as Undo, to the success toast. */
+  undo?: { label: string; onAction: () => void };
+};
+
 /** Presses a button on a service, reports the result in a toast, then refreshes the list. */
 export function useAct() {
   const client = useQueryClient();
   const mutation = useMutation({
-    mutationFn: ({ path }: { path: string; doing: string; done: string }) => post(path),
-    onSuccess: (result, { doing, done }) => {
+    mutationFn: ({ path }: ActOptions) => post(path),
+    onSuccess: (result, { doing, done, undo }) => {
       const last = result.output?.split("\n").filter(Boolean).at(-1);
-      if (result.ok) toast(done, { description: last });
+      if (result.ok) toast(done, { description: last, action: undo });
       else toast(`${doing} didn't work`, { description: result.error ?? last });
     },
     onError: (_e, { doing }) =>
