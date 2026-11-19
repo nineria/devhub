@@ -472,7 +472,7 @@ function Form({
                 value={l.path}
                 onChange={(v) => upd({ path: v })}
                 placeholder=":8080"
-                hint="A port like :8080 opens that port on the host you opened Ostler from."
+                hint="A port like :8080 is listed on every address Ostler is reachable at. A full URL or /path is used as written."
               />
               <Button
                 type="button"

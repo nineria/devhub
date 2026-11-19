@@ -32,34 +32,65 @@ export type Only = "all" | "attention";
 
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
 
-/** Where to open Ostler: each address with a Copy button, to type or send to another device. */
-export function OpenOn({ compact }: { compact?: boolean }) {
-  const urls = useMeta().data?.urls;
-  const list = urls?.length ? urls : [location.origin];
+/** Hosts Ostler can be reached on (domain, localhost, LAN, VPN), the current one first. */
+function useHosts(): string[] {
+  const urls = useMeta().data?.urls ?? [];
+  const hosts = [location.hostname];
+  for (const u of urls) {
+    try {
+      const h = new URL(u).hostname;
+      if (!hosts.includes(h)) hosts.push(h);
+    } catch {
+      /* ignore a malformed address */
+    }
+  }
+  return hosts;
+}
+
+/** Every address a link opens at: ":8080" is tried on each host, a full URL or "/path" stays as written. */
+export function linkUrls(path: string, hosts: string[]): string[] {
+  if (path.startsWith(":"))
+    return hosts.map((h) => `http://${h.includes(":") ? `[${h}]` : h}${path}`);
+  return [path];
+}
+
+/** All of a service's addresses, each with a Copy button, to type or send to another device. */
+function Addresses({ s }: { s: Service }) {
+  const hosts = useHosts();
+  if (!s.links.length) return null;
   return (
-    <section
-      aria-label="Open Ostler"
-      className={`mb-3 rounded-(--radius-card) border-[0.5px] border-line px-3 py-2 ${compact ? "text-[12px]" : "text-[15px]"}`}
-    >
-      <p className="m-0 mb-1 font-medium text-label-2">Open Ostler at</p>
-      <ul className="m-0 list-none p-0">
-        {list.map((u) => (
-          <li key={u} className="flex items-center justify-between gap-2 py-0.5">
-            <a href={u} className="num min-w-0 truncate text-inherit">
-              {u}
-            </a>
-            <Button
-              onClick={() =>
-                toast(copyText(u) ? "Copied address" : "Couldn't copy", { description: u })
-              }
-              aria-label={`Copy ${u}`}
-            >
-              Copy
-            </Button>
-          </li>
-        ))}
-      </ul>
-    </section>
+    <>
+      {s.links.map((l) => (
+        <section
+          key={`${l.label}${l.path}`}
+          aria-label={l.label}
+          className="mb-3 rounded-(--radius-card) border border-line bg-card px-4 py-3 shadow-xs lg:mb-3 lg:py-2.5"
+        >
+          <p className="m-0 mb-1 text-[15px] font-medium text-label-2 lg:text-[13px]">{l.label}</p>
+          <ul className="m-0 list-none p-0">
+            {linkUrls(l.path, hosts).map((u) => (
+              <li key={u} className="flex items-center justify-between gap-2 py-0.5">
+                <a
+                  href={u}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="num min-w-0 truncate text-[15px] text-inherit lg:text-[13px]"
+                >
+                  {u}
+                </a>
+                <Button
+                  onClick={() =>
+                    toast(copyText(u) ? "Copied address" : "Couldn't copy", { description: u })
+                  }
+                >
+                  Copy<span className="sr-only"> {u}</span>
+                </Button>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ))}
+    </>
   );
 }
 
@@ -541,6 +572,7 @@ export function Detail({ s, desktop }: { s: Service; services?: Service[]; deskt
         </div>
         <Actions s={s} />
       </header>
+      <Addresses s={s} />
       <section
         aria-label="Status"
         className="mb-6 rounded-(--radius-card) border border-line bg-card px-4 py-3.5 shadow-xs lg:mb-5 lg:py-3"
