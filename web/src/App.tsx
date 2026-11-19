@@ -9,7 +9,7 @@ import {
   AlertDialogTitle,
 } from "@ui-sdk/react/alert-dialog";
 import { Tabs, TabsList, TabsPanel, TabsTab } from "@ui-sdk/react/tabs";
-import { Toast, ToastDescription, ToastRegion, ToastTitle } from "@ui-sdk/react/toast";
+import { Toast, ToastAction, ToastDescription, ToastRegion, ToastTitle } from "@ui-sdk/react/toast";
 import { ServiceEditor } from "./Editor";
 import { AllLogs, Detail, Filters, Health, OpenOn, ServiceList, type Only } from "./Services";
 import { Button } from "@ui-sdk/react/button";
@@ -69,6 +69,7 @@ function Dialogs() {
               <ToastTitle />
               <ToastDescription />
             </div>
+            <ToastAction data-variant="solid" />
           </Toast>
         )}
       </ToastRegion>

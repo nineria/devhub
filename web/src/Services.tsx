@@ -6,6 +6,7 @@ import {
   SegmentedControlIndicator,
   SegmentedControlItem,
 } from "@ui-sdk/react/segmented-control";
+import { Menu, MenuContent, MenuItem, MenuTrigger } from "@ui-sdk/react/menu";
 import { Toggle, ToggleIcon } from "@ui-sdk/react/toggle";
 import { ago, lampTone, needsAttention, seconds, statusOf, type Service } from "./api";
 import { LogView } from "./Logs";
@@ -323,31 +324,45 @@ function Actions({ s }: { s: Service }) {
   const stopped = s.kind === "process" && !s.want;
   const path = (what: string) => `services/${s.id}/${what}`;
   const live = !s.disabled;
+  const name = <span className="sr-only"> {s.name}</span>;
+
+  const start = () =>
+    act({
+      path: path("start"),
+      doing: `Starting ${s.name}`,
+      done: `${s.name} is starting`,
+    });
+  const stop = () =>
+    act({
+      path: path("stop"),
+      doing: `Stopping ${s.name}`,
+      done: `${s.name} stopped`,
+      undo: { label: "Undo", onAction: () => void start() },
+    });
+  const disable = async () => {
+    const note =
+      s.kind === "process"
+        ? "It stops and stays off, even after Ostler restarts."
+        : "It stops being checked and its heartbeat stops, so whatever watches the heartbeat will alert.";
+    if (!(await ask(`Disable ${s.name}?`, note, `Disable ${s.name}`, `Disables ${s.name}`))) return;
+    await act({
+      path: path("disable"),
+      doing: `Disabling ${s.name}`,
+      done: `${s.name} disabled`,
+    });
+  };
+
+  // Everything that is rarely needed, or can't be undone, lives in the menu, away from Restart.
+  const menu: { value: string; label: string; bad?: boolean; run: () => void }[] = [];
+  if (canEdit) menu.push({ value: "edit", label: "Edit", run: () => openEditor(s.id) });
+  if (live) menu.push({ value: "disable", label: "Disable", bad: true, run: () => void disable() });
+  if (canEdit) menu.push({ value: "delete", label: "Delete", bad: true, run: () => void remove() });
 
   const secondary: ReactNode[] = [];
   if (s.kind === "process" && live && !stopped) {
     secondary.push(
-      <Button
-        key="stop"
-        className={buttonClass}
-        onClick={async () => {
-          if (
-            !(await ask(
-              `Stop ${s.name}?`,
-              "It stays stopped until you start it again.",
-              `Stop ${s.name}`,
-              `Stops ${s.name}`,
-            ))
-          )
-            return;
-          await act({
-            path: path("stop"),
-            doing: `Stopping ${s.name}`,
-            done: `${s.name} stopped`,
-          });
-        }}
-      >
-        Stop {s.name}
+      <Button key="stop" className={buttonClass} onClick={() => void stop()}>
+        Stop{name}
       </Button>,
     );
   }
@@ -398,7 +413,7 @@ function Actions({ s }: { s: Service }) {
           act({ path: path("enable"), doing: `Enabling ${s.name}`, done: `${s.name} enabled` })
         }
       >
-        Enable {s.name}
+        Enable{name}
       </Button>,
     );
   }
@@ -412,22 +427,10 @@ function Actions({ s }: { s: Service }) {
             data-variant="solid"
             onClick={async () => {
               if (stopped) {
-                await act({
-                  path: path("start"),
-                  doing: `Starting ${s.name}`,
-                  done: `${s.name} is starting`,
-                });
+                await start();
                 return;
               }
-              if (
-                !(await ask(
-                  `Restart ${s.name}?`,
-                  "It rebuilds first. If the build fails, the running version stays up.",
-                  `Restart ${s.name}`,
-                  `Rebuilds and restarts ${s.name}`,
-                ))
-              )
-                return;
+              // No question: the build runs first, and a failed build leaves the old version up.
               await act({
                 path: path("restart"),
                 doing: `Restarting ${s.name}`,
@@ -435,10 +438,10 @@ function Actions({ s }: { s: Service }) {
               });
             }}
           >
-            {stopped ? `Start ${s.name}` : "Rebuild and restart"}
+            {stopped ? "Start" : "Rebuild and restart"}
+            {name}
           </Button>
         )}
-        {secondary.length > 0 && <div className="grid gap-2.5 lg:contents">{secondary}</div>}
         {s.blocker && live && (
           <Button
             className={buttonClass}
@@ -464,44 +467,20 @@ function Actions({ s }: { s: Service }) {
             Free port {s.blocker.port} and start
           </Button>
         )}
-        {canEdit && (
-          <Button className={buttonClass} onClick={() => openEditor(s.id)}>
-            Edit {s.name}
-          </Button>
-        )}
-        {canEdit && (
-          <Button className={`${buttonClass} text-bad`} onClick={remove}>
-            Delete {s.name}
-          </Button>
-        )}
-        {live && (
-          <>
-            <Button
-              className={`${buttonClass} text-bad`}
-              onClick={async () => {
-                const note =
-                  s.kind === "process"
-                    ? "It stops and stays off, even after Ostler restarts."
-                    : "It stops being checked and its heartbeat stops, so whatever watches the heartbeat will alert.";
-                if (
-                  !(await ask(
-                    `Disable ${s.name}?`,
-                    note,
-                    `Disable ${s.name}`,
-                    `Disables ${s.name}`,
-                  ))
-                )
-                  return;
-                await act({
-                  path: path("disable"),
-                  doing: `Disabling ${s.name}`,
-                  done: `${s.name} disabled`,
-                });
-              }}
-            >
-              Disable {s.name}
-            </Button>
-          </>
+        {secondary.length > 0 && <div className="grid gap-2.5 lg:contents">{secondary}</div>}
+        {menu.length > 0 && (
+          <Menu onAction={(v) => menu.find((m) => m.value === v)?.run()}>
+            <MenuTrigger className={`${buttonClass} btn`}>
+              More<span className="sr-only"> actions for {s.name}</span>
+            </MenuTrigger>
+            <MenuContent>
+              {menu.map((m) => (
+                <MenuItem key={m.value} value={m.value} className={m.bad ? "text-bad" : undefined}>
+                  {m.label}
+                </MenuItem>
+              ))}
+            </MenuContent>
+          </Menu>
         )}
       </div>
       {s.busy && (
