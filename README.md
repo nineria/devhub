@@ -116,7 +116,7 @@ joined with the service's `dir`.
 | `interval` | check | Seconds between checks. |
 | `heartbeat` | check | `{ "url": "...", "method": "POST", "tokenEnv": "NAME" }`. Sent after each passing check. `${NAME}` in the URL is filled from your env files. `tokenEnv` sends that variable as a bearer token. |
 | `buttons` | check, task | `[{ "id", "label", "cmd", "confirm" }]`. A `confirm` text makes the page ask first. |
-| `links` | all | `[{ "label", "path" }]`. A path like `:8080` opens that port on the host you opened Ostler from. |
+| `links` | all | `[{ "label", "path" }]`. A path like `:8080` is listed on every address Ostler is reachable at; a full URL or `/path` is used as written. |
 
 See [`ostler.example.json`](ostler.example.json) for a complete example.
 
