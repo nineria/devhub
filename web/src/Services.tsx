@@ -49,7 +49,8 @@ function useHosts(): string[] {
 
 /** Every address a link opens at: ":8080" is tried on each host, a full URL or "/path" stays as written. */
 export function linkUrls(path: string, hosts: string[]): string[] {
-  if (path.startsWith(":")) return hosts.map((h) => `http://${h.includes(":") ? `[${h}]` : h}${path}`);
+  if (path.startsWith(":"))
+    return hosts.map((h) => `http://${h.includes(":") ? `[${h}]` : h}${path}`);
   return [path];
 }
 
