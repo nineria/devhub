@@ -179,7 +179,7 @@ export function App() {
           <a
             href="#/logs"
             aria-current={logsActive ? "page" : undefined}
-            className={`mb-3 flex h-(--control) items-center justify-between rounded-md px-3 text-[13px] font-medium text-inherit no-underline ${logsActive ? "bg-accent/10" : "hover:bg-muted"}`}
+            className={`mb-3 flex h-(--control) items-center justify-between rounded-(--radius-control) px-3 text-[13px] font-medium text-inherit no-underline ${logsActive ? "bg-accent/10" : "hover:bg-muted"}`}
           >
             All logs
             {total > 0 && (

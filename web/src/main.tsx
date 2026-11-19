@@ -22,7 +22,7 @@ class Boundary extends Component<{ children: ReactNode }, { failed: boolean }> {
         <p className="mt-2 text-label-2">The page hit an error. Reloading usually fixes it.</p>
         <button
           type="button"
-          className="mt-6 min-h-[50px] rounded-xl bg-accent px-6 text-[17px] font-semibold text-on-accent"
+          className="mt-6 min-h-[50px] rounded-(--radius-control) bg-accent px-6 text-[17px] font-semibold text-on-accent"
           onClick={() => location.reload()}
         >
           Reload

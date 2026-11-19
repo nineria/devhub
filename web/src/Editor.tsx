@@ -190,7 +190,7 @@ function Section({
   );
 }
 
-const rowClass = "grid gap-2 rounded-lg border border-line p-3";
+const rowClass = "grid gap-2 rounded-(--radius-card) border border-line p-3";
 
 function Form({
   initial,

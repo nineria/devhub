@@ -37,20 +37,21 @@
   --ui-primary: var(--color-accent);
   --ui-primary-foreground: var(--color-on-accent);
   --ui-ring: var(--color-focus);
-  --ui-radius: 8px;
+  --ui-radius: var(--radius-control);
   --ui-font-size: 17px;
   --ui-font-sans: var(--font-sans);
 
   /* One size for every button, field and segmented control: 48 px on a phone, 32 px on a PC. */
   --control: 48px;
   --control-text: 17px;
-  --control-radius: 10px;
+  --radius-control: 10px;
+  --radius-card: 14px;
+  --control-radius: var(--radius-control);
 }
 @media (min-width: 1024px) {
   :root {
     --control: 32px;
     --control-text: 13px;
-    --control-radius: 7px;
   }
   body {
     font-size: 13px;
@@ -106,7 +107,7 @@ body {
 [data-slot="alert-dialog-content"] {
   width: min(calc(100vw - 32px), 24rem);
   padding: 20px;
-  border-radius: 10px;
+  border-radius: var(--radius-card);
 }
 [data-slot="alert-dialog-content"] [data-slot="stack"] {
   display: grid;
@@ -123,7 +124,7 @@ body {
   max-height: calc(100dvh - 24px);
   overflow-y: auto;
   padding: 20px;
-  border-radius: 12px;
+  border-radius: var(--radius-card);
 }
 [data-slot="dialog-content"] [data-slot="stack"] {
   display: grid;
@@ -145,6 +146,17 @@ body {
   min-height: var(--control);
   font-size: var(--control-text);
   font-weight: 600;
+}
+
+/* Every control, labelled or not, shares one corner radius (10px), every panel another (14px). */
+[data-slot="button"],
+[data-slot="toggle"],
+[data-slot="input"],
+[data-slot="segmented-control"],
+[data-slot="dialog-close"],
+[data-slot="alert-dialog-close"],
+.btn {
+  border-radius: var(--radius-control);
 }
 
 /* Controls share one size. Secondary buttons are plain surfaces, the primary one is the accent. */

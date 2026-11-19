@@ -142,7 +142,7 @@ const Row = memo(function Row({
         </span>
       </div>
       {open && (
-        <div className="mt-1 mb-1.5 rounded bg-bg px-2.5 py-2 text-[12px] text-label-2">
+        <div className="mt-1 mb-1.5 rounded-(--radius-control) bg-bg px-2.5 py-2 text-[12px] text-label-2">
           <div>
             {clockMs(l.t)} · {l.s}
             {service ? ` · ${service}` : ""} · {l.l}
@@ -287,7 +287,7 @@ export function LogView({
       </div>
 
       <div
-        className={`relative overflow-hidden rounded-md border border-line bg-card ${fill ? "flex min-h-0 flex-1 flex-col" : ""}`}
+        className={`relative overflow-hidden rounded-(--radius-card) border border-line bg-card ${fill ? "flex min-h-0 flex-1 flex-col" : ""}`}
       >
         <div
           ref={box}
