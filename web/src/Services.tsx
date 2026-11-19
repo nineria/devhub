@@ -48,7 +48,9 @@ export function OpenOn({ compact }: { compact?: boolean }) {
               {u}
             </a>
             <Button
-              onClick={() => toast(copyText(u) ? "Copied address" : "Couldn't copy", { description: u })}
+              onClick={() =>
+                toast(copyText(u) ? "Copied address" : "Couldn't copy", { description: u })
+              }
               aria-label={`Copy ${u}`}
             >
               Copy
