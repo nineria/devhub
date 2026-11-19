@@ -11,7 +11,7 @@ import {
 import { Tabs, TabsList, TabsPanel, TabsTab } from "@ui-sdk/react/tabs";
 import { Toast, ToastDescription, ToastRegion, ToastTitle } from "@ui-sdk/react/toast";
 import { ServiceEditor } from "./Editor";
-import { AllLogs, Detail, Filters, Health, ServiceList, type Only } from "./Services";
+import { AllLogs, Detail, Filters, Health, OpenOn, ServiceList, type Only } from "./Services";
 import { Button } from "@ui-sdk/react/button";
 import {
   EditorContext,
@@ -174,6 +174,7 @@ export function App() {
             <Brand />
           </div>
           <Health services={services} compact />
+          <OpenOn compact />
           {stale}
           <a
             href="#/logs"
@@ -214,6 +215,7 @@ export function App() {
             </div>
           )}
           {tab === "services" && !selected && <Health services={services} />}
+          {tab === "services" && !selected && <OpenOn />}
           {stale}
           <TabsPanel value="services">
             {selected ? <Detail s={selected} services={services} desktop={false} /> : list}

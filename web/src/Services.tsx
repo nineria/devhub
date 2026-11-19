@@ -15,6 +15,7 @@ import {
   Lamp,
   buttonClass,
   confirm,
+  copyText,
   pill,
   textColor,
   toast,
@@ -29,6 +30,37 @@ const groupLabel = (g: string) => (g ? g.charAt(0).toUpperCase() + g.slice(1) : 
 export type Only = "all" | "attention";
 
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
+
+/** Where to open Ostler: each address with a Copy button, to type or send to another device. */
+export function OpenOn({ compact }: { compact?: boolean }) {
+  const urls = useMeta().data?.urls;
+  const list = urls?.length ? urls : [location.origin];
+  return (
+    <section
+      aria-label="Open Ostler"
+      className={`mb-3 rounded-md border-[0.5px] border-line px-3 py-2 ${compact ? "text-[12px]" : "text-[15px]"}`}
+    >
+      <p className="m-0 mb-1 font-medium text-label-2">Open Ostler at</p>
+      <ul className="m-0 list-none p-0">
+        {list.map((u) => (
+          <li key={u} className="flex items-center justify-between gap-2 py-0.5">
+            <a href={u} className="num min-w-0 truncate text-inherit">
+              {u}
+            </a>
+            <Button
+              onClick={() =>
+                toast(copyText(u) ? "Copied address" : "Couldn't copy", { description: u })
+              }
+              aria-label={`Copy ${u}`}
+            >
+              Copy
+            </Button>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
 
 export function Health({ services, compact }: { services: Service[]; compact?: boolean }) {
   const attention = services.filter(needsAttention);

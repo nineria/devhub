@@ -8,7 +8,7 @@ import {
 } from "@ui-sdk/react/segmented-control";
 import { Switch, SwitchThumb } from "@ui-sdk/react/switch";
 import { post, type Line } from "./api";
-import { sectionClass, toast } from "./shared";
+import { copyText, sectionClass, toast } from "./shared";
 
 // Terminal color codes from the services' own output; built from the escape character on purpose.
 const ANSI = new RegExp(`${String.fromCharCode(27)}\\[[0-9;]*[A-Za-z]`, "g");
@@ -82,24 +82,6 @@ function highlight(text: string, re: RegExp | null): ReactNode {
   }
   parts.push(text.slice(last));
   return parts;
-}
-
-function copyText(text: string): boolean {
-  // Over plain http (a VPN address, say) the clipboard API is unavailable, so fall back to a hidden field.
-  if (navigator.clipboard && window.isSecureContext) {
-    void navigator.clipboard.writeText(text);
-    return true;
-  }
-  const area = document.createElement("textarea");
-  area.value = text;
-  area.setAttribute("readonly", "");
-  area.style.position = "fixed";
-  area.style.opacity = "0";
-  document.body.appendChild(area);
-  area.select();
-  const ok = document.execCommand("copy");
-  area.remove();
-  return ok;
 }
 
 type Level = "all" | "error" | "warn";

@@ -426,7 +426,7 @@ func replyEdit(w http.ResponseWriter, err error, extra map[string]any) {
 
 func (h *Hub) manageRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/meta", func(w http.ResponseWriter, r *http.Request) {
-		meta := map[string]any{"canEdit": h.edit != nil}
+		meta := map[string]any{"canEdit": h.edit != nil, "urls": h.urls}
 		if h.edit != nil {
 			meta["root"] = h.edit.root
 		}

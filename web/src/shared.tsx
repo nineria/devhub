@@ -156,3 +156,21 @@ export function useStarred(): [Set<string>, (id: string) => void] {
     });
   return [set, toggle];
 }
+
+export function copyText(text: string): boolean {
+  // Over plain http (a VPN address, say) the clipboard API is unavailable, so fall back to a hidden field.
+  if (navigator.clipboard && window.isSecureContext) {
+    void navigator.clipboard.writeText(text);
+    return true;
+  }
+  const area = document.createElement("textarea");
+  area.value = text;
+  area.setAttribute("readonly", "");
+  area.style.position = "fixed";
+  area.style.opacity = "0";
+  document.body.appendChild(area);
+  area.select();
+  const ok = document.execCommand("copy");
+  area.remove();
+  return ok;
+}
