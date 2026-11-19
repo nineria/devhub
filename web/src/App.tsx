@@ -100,7 +100,7 @@ function useSlashShortcut() {
 }
 
 export function App() {
-  const [editing, setEditing] = useState<{ id?: string } | null>(null);
+  const [editing, setEditing] = useState<{ id?: string; group?: string } | null>(null);
   const canEdit = useMeta().data?.canEdit === true;
   const { data: services, isError } = useServices();
   const [route, go] = useRoute();
@@ -148,7 +148,7 @@ export function App() {
   );
 
   const wrap = (page: React.ReactNode) => (
-    <EditorContext.Provider value={(id) => setEditing({ id })}>
+    <EditorContext.Provider value={(id, group) => setEditing({ id, group })}>
       {page}
       {canEdit && (
         <ServiceEditor
