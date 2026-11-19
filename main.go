@@ -139,7 +139,9 @@ func main() {
 		ui = os.DirFS(expandHome(dir))
 	}
 	port, _ := strconv.Atoi(envOr("PORT", "8090"))
+	hub.urls = accessURLs(binds, port)
 	serve("hub", binds, port, hub.routes(ui))
+	log.Printf("open Ostler in your browser: %s", strings.Join(hub.urls, "  or  "))
 
 	// OSTLER_PROXIES="8082=http://127.0.0.1:8081,..." also exposes other local web pages on the same
 	// addresses as the hub, so one VPN address reaches all of them.

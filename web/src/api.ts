@@ -103,7 +103,7 @@ export type ServiceConfig = {
   links?: { label: string; path: string }[];
 };
 
-export type Meta = { canEdit: boolean; root?: string };
+export type Meta = { canEdit: boolean; root?: string; urls?: string[] };
 
 export async function getMeta(): Promise<Meta> {
   const res = await fetch("/api/meta");
