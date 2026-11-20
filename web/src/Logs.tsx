@@ -1,12 +1,4 @@
-import {
-  Fragment,
-  memo,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  type ReactNode,
-} from "react";
+import { Fragment, memo, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Button } from "@ui-sdk/react/button";
 import { Input } from "@ui-sdk/react/input";
 import {
@@ -75,14 +67,11 @@ function toRegExp(text: string): { re: RegExp | null; invalid: boolean } {
   };
 }
 
-const clock = (t: number) =>
-  new Date(t).toLocaleTimeString([], { hour12: false });
-const clockMs = (t: number) =>
-  `${clock(t)}.${String(t % 1000).padStart(3, "0")}`;
+const clock = (t: number) => new Date(t).toLocaleTimeString([], { hour12: false });
+const clockMs = (t: number) => `${clock(t)}.${String(t % 1000).padStart(3, "0")}`;
 
 // A service's own date stamp repeats the time column, so it is dropped from the message.
-const STAMP =
-  /^\d{4}[/-]\d{2}[/-]\d{2}[ T]\d{2}:\d{2}:\d{2}(?:[.,]\d+)?(?:Z|[+-]\d{2}:?\d{2})?\s+/;
+const STAMP = /^\d{4}[/-]\d{2}[/-]\d{2}[ T]\d{2}:\d{2}:\d{2}(?:[.,]\d+)?(?:Z|[+-]\d{2}:?\d{2})?\s+/;
 const LEVEL_WORD = /^(?:INFO|WARN|WARNING|ERROR|DEBUG|TRACE)\b:?\s*/;
 const tidy = (m: string) => m.replace(STAMP, "").replace(LEVEL_WORD, "");
 
@@ -119,11 +108,7 @@ const rowTint = {
 /** Marks where unseen lines begin, like Discord's "new messages" line. */
 function NewDivider() {
   return (
-    <div
-      role="separator"
-      aria-label="New lines"
-      className="relative my-1 h-0 border-t border-bad"
-    >
+    <div role="separator" aria-label="New lines" className="relative my-1 h-0 border-t border-bad">
       <span className="absolute -top-2 right-3 rounded-sm bg-bad px-1.5 text-[10px] leading-4 font-bold tracking-wide text-white uppercase">
         New
       </span>
@@ -153,8 +138,7 @@ const Row = memo(function Row({
       aria-expanded={open}
       onClick={() => !window.getSelection()?.toString() && setOpen((o) => !o)}
       onKeyDown={(e) =>
-        (e.key === "Enter" || e.key === " ") &&
-        (e.preventDefault(), setOpen((o) => !o))
+        (e.key === "Enter" || e.key === " ") && (e.preventDefault(), setOpen((o) => !o))
       }
       className={`cursor-default border-b-[0.5px] border-b-line/60 px-3 py-[3px] outline-none focus-visible:bg-muted ${rowTint[l.l]}`}
     >
@@ -163,9 +147,7 @@ const Row = memo(function Row({
           {clock(l.t)}
         </span>
         {service !== undefined && (
-          <span className="w-28 flex-none truncate font-semibold select-none">
-            {service}
-          </span>
+          <span className="w-28 flex-none truncate font-semibold select-none">{service}</span>
         )}
         <span className="w-[3.25rem] flex-none text-[11px] font-semibold select-none">
           {l.l === "error" ? (
@@ -188,9 +170,7 @@ const Row = memo(function Row({
             {clockMs(l.t)} · {l.s}
             {service ? ` · ${service}` : ""} · {l.l}
           </div>
-          <div className="mt-1 break-words whitespace-pre-wrap text-label">
-            {l.m}
-          </div>
+          <div className="mt-1 break-words whitespace-pre-wrap text-label">{l.m}</div>
         </div>
       )}
     </div>
@@ -218,9 +198,7 @@ export function LogView({
   const [level, setLevel] = useState<Level>("all");
   const [source, setSource] = useState<Source>("all");
   const [follow, setFollow] = useState(true);
-  const [wrap, setWrap] = useState(
-    () => !window.matchMedia("(min-width: 1024px)").matches,
-  );
+  const [wrap, setWrap] = useState(() => !window.matchMedia("(min-width: 1024px)").matches);
   const box = useRef<HTMLDivElement>(null);
 
   const { re, invalid } = useMemo(() => toRegExp(text), [text]);
@@ -253,16 +231,11 @@ export function LogView({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [follow]);
   const firstNew =
-    markSeq === null
-      ? undefined
-      : (lines ?? []).find((_, i) => offset + i >= markSeq);
-  const fresh =
-    markSeq === null ? 0 : Math.max(0, received - Math.max(markSeq, offset));
+    markSeq === null ? undefined : (lines ?? []).find((_, i) => offset + i >= markSeq);
+  const fresh = markSeq === null ? 0 : Math.max(0, received - Math.max(markSeq, offset));
   // The first visible line that is new, where the divider goes.
   const dividerAt =
-    fresh > 0 && markSeq !== null
-      ? shown.find((x) => x.seq >= markSeq)?.seq
-      : undefined;
+    fresh > 0 && markSeq !== null ? shown.find((x) => x.seq >= markSeq)?.seq : undefined;
 
   // Scrolling up pauses following; reaching the bottom again resumes it, like a live log.
   const onScroll = () => {
@@ -275,27 +248,17 @@ export function LogView({
 
   const plain = () =>
     shown
-      .map(
-        ({ l }) =>
-          `${clock(l.t)} ${l.n ? `[${names?.[l.n] ?? l.n}] ` : ""}${l.m}`,
-      )
+      .map(({ l }) => `${clock(l.t)} ${l.n ? `[${names?.[l.n] ?? l.n}] ` : ""}${l.m}`)
       .join("\n");
 
   return (
-    <section
-      aria-label={title}
-      className={fill ? "flex min-h-0 flex-1 flex-col" : ""}
-    >
+    <section aria-label={title} className={fill ? "flex min-h-0 flex-1 flex-col" : ""}>
       <div className="flex flex-wrap items-center justify-between gap-x-4">
         <h2 className={sectionClass}>{title}</h2>
         <div className="flex items-center gap-4">
           <label className="inline-flex min-h-11 items-center gap-2.5 text-[15px] text-label-2 lg:text-[13px]">
             Wrap
-            <Switch
-              checked={wrap}
-              onCheckedChange={setWrap}
-              aria-label="Wrap long lines"
-            >
+            <Switch checked={wrap} onCheckedChange={setWrap} aria-label="Wrap long lines">
               <SwitchThumb />
             </Switch>
           </label>
@@ -319,11 +282,7 @@ export function LogView({
       </div>
 
       {invalid && (
-        <p
-          id="log-pattern-hint"
-          role="status"
-          className="m-0 mb-1.5 text-[13px] text-warn"
-        >
+        <p id="log-pattern-hint" role="status" className="m-0 mb-1.5 text-[13px] text-warn">
           Not a valid pattern, so this matches the text as typed.
         </p>
       )}
@@ -344,12 +303,8 @@ export function LogView({
         >
           <SegmentedControlIndicator />
           <SegmentedControlItem value="all">All</SegmentedControlItem>
-          <SegmentedControlItem value="error">
-            Errors ({errors})
-          </SegmentedControlItem>
-          <SegmentedControlItem value="warn">
-            Warnings ({warnings})
-          </SegmentedControlItem>
+          <SegmentedControlItem value="error">Errors ({errors})</SegmentedControlItem>
+          <SegmentedControlItem value="warn">Warnings ({warnings})</SegmentedControlItem>
         </SegmentedControl>
         <SegmentedControl
           aria-label="Source"
@@ -365,11 +320,7 @@ export function LogView({
           <Button
             className="flex-1 lg:flex-none lg:px-3.5"
             onClick={() =>
-              toast(
-                copyText(plain())
-                  ? `Copied ${shown.length} lines`
-                  : "Couldn't copy",
-              )
+              toast(copyText(plain()) ? `Copied ${shown.length} lines` : "Couldn't copy")
             }
           >
             Copy
@@ -401,9 +352,7 @@ export function LogView({
             <p className="px-3 py-2 text-label-2">Loading…</p>
           ) : shown.length === 0 ? (
             <p className="px-3 py-2 text-label-2">
-              {lines.length === 0
-                ? "Nothing logged yet."
-                : "No lines match the filter."}
+              {lines.length === 0 ? "Nothing logged yet." : "No lines match the filter."}
             </p>
           ) : (
             shown.map(({ l, seq }) => (
@@ -425,8 +374,7 @@ export function LogView({
             className="absolute inset-x-0 top-0 z-10 flex items-center justify-between gap-3 bg-focus px-3 py-1.5 text-[13px] font-semibold text-white shadow-md"
           >
             <span className="truncate">
-              {fresh > 999 ? "999+" : fresh} new{" "}
-              {fresh === 1 ? "line" : "lines"}
+              {fresh > 999 ? "999+" : fresh} new {fresh === 1 ? "line" : "lines"}
               {firstNew ? ` since ${clock(firstNew.t)}` : ""}
             </span>
             <button
@@ -444,9 +392,7 @@ export function LogView({
             data-variant="solid"
             onClick={() => setFollow(true)}
           >
-            {fresh > 0
-              ? `Jump to latest (${fresh > 999 ? "999+" : fresh} new)`
-              : "Jump to latest"}
+            {fresh > 0 ? `Jump to latest (${fresh > 999 ? "999+" : fresh} new)` : "Jump to latest"}
           </Button>
         )}
       </div>
