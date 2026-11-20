@@ -100,6 +100,13 @@ func main() {
 	}
 	autostart := getEnv("AUTOSTART") != "0"
 
+	// Two hubs would start every service twice and fight over their ports, so only one may run.
+	lock, err := lockInstance(filepath.Join(configDir(), "ostler.lock"))
+	if err != nil {
+		log.Fatalf("%v", err)
+	}
+	defer lock.Close()
+
 	// The services you disabled stay disabled after a restart.
 	statePath := expandHome(envOr("STATE", filepath.Join(configDir(), "state.json")))
 	disabled := loadDisabled(statePath)
