@@ -1,4 +1,4 @@
-import { memo, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { Fragment, memo, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Button } from "@ui-sdk/react/button";
 import { Input } from "@ui-sdk/react/input";
 import {
@@ -61,7 +61,10 @@ function toRegExp(text: string): { re: RegExp | null; invalid: boolean } {
       invalid = true;
     }
   }
-  return { re: new RegExp(t.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "gi"), invalid };
+  return {
+    re: new RegExp(t.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "gi"),
+    invalid,
+  };
 }
 
 const clock = (t: number) => new Date(t).toLocaleTimeString([], { hour12: false });
@@ -101,6 +104,17 @@ const rowTint = {
   warn: "bg-warn/12",
   error: "bg-bad/12",
 } as const;
+
+/** Marks where unseen lines begin, like Discord's "new messages" line. */
+function NewDivider() {
+  return (
+    <div role="separator" aria-label="New lines" className="relative my-1 h-0 border-t border-bad">
+      <span className="absolute -top-2 right-3 rounded-sm bg-bad px-1.5 text-[10px] leading-4 font-bold tracking-wide text-white uppercase">
+        New
+      </span>
+    </div>
+  );
+}
 
 /** One log row: time, level, source, message. A click opens it in full with its raw details. */
 const Row = memo(function Row({
@@ -178,7 +192,8 @@ export function LogView({
 }) {
   const combined = names !== undefined;
   const { lines, received, clear } = useLogStream(url, combined ? 4000 : 2000);
-  const [pausedAt, setPausedAt] = useState(0);
+  // Sequence number of the first line that arrived after following paused; null while following.
+  const [markSeq, setMarkSeq] = useState<number | null>(null);
   const [text, setText] = useState("");
   const [level, setLevel] = useState<Level>("all");
   const [source, setSource] = useState<Source>("all");
@@ -187,16 +202,20 @@ export function LogView({
   const box = useRef<HTMLDivElement>(null);
 
   const { re, invalid } = useMemo(() => toRegExp(text), [text]);
+  // Each line's sequence number counts every line ever received, so it survives the buffer trimming.
+  const offset = received - (lines?.length ?? 0);
   const shown = useMemo(() => {
-    return (lines ?? []).filter((l) => {
-      if (l.m.trim() === "") return false; // blank lines add nothing
-      if (level !== "all" && l.l !== level) return false;
-      if (source !== "all" && l.s !== source) return false;
-      if (!re) return true;
-      re.lastIndex = 0;
-      return re.test(`${l.n ? (names?.[l.n] ?? l.n) + " " : ""}${l.m}`);
-    });
-  }, [lines, re, level, source, names]);
+    return (lines ?? [])
+      .map((l, i) => ({ l, seq: offset + i }))
+      .filter(({ l }) => {
+        if (l.m.trim() === "") return false; // blank lines add nothing
+        if (level !== "all" && l.l !== level) return false;
+        if (source !== "all" && l.s !== source) return false;
+        if (!re) return true;
+        re.lastIndex = 0;
+        return re.test(`${l.n ? (names?.[l.n] ?? l.n) + " " : ""}${l.m}`);
+      });
+  }, [lines, offset, re, level, source, names]);
 
   const errors = (lines ?? []).filter((l) => l.l === "error").length;
   const warnings = (lines ?? []).filter((l) => l.l === "warn").length;
@@ -205,13 +224,18 @@ export function LogView({
     if (follow && box.current) box.current.scrollTop = box.current.scrollHeight;
   }, [shown, follow, wrap]);
 
-  // Remember how many lines had arrived when following paused, to show how many came since.
+  // Remember where the log stood when following paused, so what came after can be marked as new.
   useEffect(() => {
-    if (!follow) setPausedAt(received);
-    // Only the moment following pauses matters, not every later line.
+    setMarkSeq(follow ? null : received);
+    // Only the moment following changes matters, not every later line.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [follow]);
-  const fresh = follow ? 0 : Math.max(0, received - pausedAt);
+  const firstNew =
+    markSeq === null ? undefined : (lines ?? []).find((_, i) => offset + i >= markSeq);
+  const fresh = markSeq === null ? 0 : Math.max(0, received - Math.max(markSeq, offset));
+  // The first visible line that is new, where the divider goes.
+  const dividerAt =
+    fresh > 0 && markSeq !== null ? shown.find((x) => x.seq >= markSeq)?.seq : undefined;
 
   // Scrolling up pauses following; reaching the bottom again resumes it, like a live log.
   const onScroll = () => {
@@ -223,7 +247,9 @@ export function LogView({
   };
 
   const plain = () =>
-    shown.map((l) => `${clock(l.t)} ${l.n ? `[${names?.[l.n] ?? l.n}] ` : ""}${l.m}`).join("\n");
+    shown
+      .map(({ l }) => `${clock(l.t)} ${l.n ? `[${names?.[l.n] ?? l.n}] ` : ""}${l.m}`)
+      .join("\n");
 
   return (
     <section aria-label={title} className={fill ? "flex min-h-0 flex-1 flex-col" : ""}>
@@ -329,17 +355,37 @@ export function LogView({
               {lines.length === 0 ? "Nothing logged yet." : "No lines match the filter."}
             </p>
           ) : (
-            shown.map((l, i) => (
-              <Row
-                key={`${l.t}-${i}`}
-                l={l}
-                service={combined ? (names?.[l.n ?? ""] ?? l.n) : undefined}
-                wrap={wrap}
-                re={re}
-              />
+            shown.map(({ l, seq }) => (
+              <Fragment key={`${l.t}-${seq}`}>
+                {seq === dividerAt && <NewDivider />}
+                <Row
+                  l={l}
+                  service={combined ? (names?.[l.n ?? ""] ?? l.n) : undefined}
+                  wrap={wrap}
+                  re={re}
+                />
+              </Fragment>
             ))
           )}
         </div>
+        {!follow && fresh > 0 && (
+          <div
+            role="status"
+            className="absolute inset-x-0 top-0 z-10 flex items-center justify-between gap-3 bg-focus px-3 py-1.5 text-[13px] font-semibold text-white shadow-md"
+          >
+            <span className="truncate">
+              {fresh > 999 ? "999+" : fresh} new {fresh === 1 ? "line" : "lines"}
+              {firstNew ? ` since ${clock(firstNew.t)}` : ""}
+            </span>
+            <button
+              type="button"
+              className="flex-none cursor-pointer rounded-sm px-1 font-semibold underline-offset-2 hover:underline focus-visible:underline"
+              onClick={() => setFollow(true)}
+            >
+              Mark as read
+            </button>
+          </div>
+        )}
         {!follow && shown.length > 0 && (
           <Button
             className="absolute right-3 bottom-3 px-4 shadow-lg"
