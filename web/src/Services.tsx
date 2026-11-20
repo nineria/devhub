@@ -10,20 +10,8 @@ import { Menu, MenuContent, MenuItem, MenuTrigger } from "@ui-sdk/react/menu";
 import { Toggle, ToggleIcon } from "@ui-sdk/react/toggle";
 import { ago, lampTone, needsAttention, seconds, statusOf, type Service } from "./api";
 import { LogView } from "./Logs";
-import { saveService } from "./api";
-import { useQueryClient } from "@tanstack/react-query";
-import {
-  Lamp,
-  buttonClass,
-  confirm,
-  copyText,
-  pill,
-  textColor,
-  toast,
-  useAct,
-  useEditor,
-  useMeta,
-} from "./shared";
+import { useServiceActions } from "./ServiceActions";
+import { Lamp, buttonClass, copyText, pill, textColor, toast, useEditor, useMeta } from "./shared";
 
 /** Groups come from the config, in the order they first appear. */
 const groupLabel = (g: string) => (g ? g.charAt(0).toUpperCase() + g.slice(1) : "Other");
@@ -180,6 +168,7 @@ function Row({
   const quiet = st.tone === "good" || st.tone === "idle";
   return (
     <li
+      data-service={s.id}
       className={`flex items-center border-t-[0.5px] border-line first:border-t-0 ${selected ? "bg-accent/10" : "hover:bg-muted"}`}
     >
       <a
@@ -327,61 +316,11 @@ export function ServiceList({
 }
 
 function Actions({ s }: { s: Service }) {
-  const act = useAct();
-  const client = useQueryClient();
   const openEditor = useEditor();
   const canEdit = useMeta().data?.canEdit === true;
-  const remove = async () => {
-    if (
-      !(await confirm({
-        title: `Delete ${s.name}?`,
-        message: "It stops and is removed from ostler.json. This can't be undone.",
-        label: `Delete ${s.name}`,
-        agent: `Deletes ${s.name}`,
-      }))
-    )
-      return;
-    const res = await saveService("DELETE", s.id);
-    if (res.ok) {
-      toast(`${s.name} deleted`);
-      location.hash = "#/";
-    } else {
-      toast(`Deleting ${s.name} didn't work`, { description: res.error });
-    }
-    await client.invalidateQueries({ queryKey: ["services"] });
-  };
-  const ask = (title: string, message: string, label: string, agent: string) =>
-    confirm({ title, message, label, agent });
-  const stopped = s.kind === "process" && !s.want;
-  const path = (what: string) => `services/${s.id}/${what}`;
-  const live = !s.disabled;
+  const { act, ask, path, start, stop, disable, enable, restart, remove, stopped, live } =
+    useServiceActions(s);
   const name = <span className="sr-only"> {s.name}</span>;
-
-  const start = () =>
-    act({
-      path: path("start"),
-      doing: `Starting ${s.name}`,
-      done: `${s.name} is starting`,
-    });
-  const stop = () =>
-    act({
-      path: path("stop"),
-      doing: `Stopping ${s.name}`,
-      done: `${s.name} stopped`,
-      undo: { label: "Undo", onAction: () => void start() },
-    });
-  const disable = async () => {
-    const note =
-      s.kind === "process"
-        ? "It stops and stays off, even after Ostler restarts."
-        : "It stops being checked and its heartbeat stops, so whatever watches the heartbeat will alert.";
-    if (!(await ask(`Disable ${s.name}?`, note, `Disable ${s.name}`, `Disables ${s.name}`))) return;
-    await act({
-      path: path("disable"),
-      doing: `Disabling ${s.name}`,
-      done: `${s.name} disabled`,
-    });
-  };
 
   // Everything that is rarely needed, or can't be undone, lives in the menu, away from Restart.
   const menu: { value: string; label: string; bad?: boolean; run: () => void }[] = [];
@@ -437,13 +376,7 @@ function Actions({ s }: { s: Service }) {
   }
   if (s.disabled) {
     secondary.push(
-      <Button
-        key="enable"
-        className={buttonClass}
-        onClick={() =>
-          act({ path: path("enable"), doing: `Enabling ${s.name}`, done: `${s.name} enabled` })
-        }
-      >
+      <Button key="enable" className={buttonClass} onClick={() => void enable()}>
         Enable{name}
       </Button>,
     );
@@ -462,11 +395,7 @@ function Actions({ s }: { s: Service }) {
                 return;
               }
               // No question: the build runs first, and a failed build leaves the old version up.
-              await act({
-                path: path("restart"),
-                doing: `Restarting ${s.name}`,
-                done: `${s.name} is restarting`,
-              });
+              await restart();
             }}
           >
             {stopped ? "Start" : "Rebuild and restart"}
@@ -535,7 +464,7 @@ function Fact({ label, children }: { label: string; children: ReactNode }) {
 export function Detail({ s, desktop }: { s: Service; services?: Service[]; desktop: boolean }) {
   const st = statusOf(s);
   return (
-    <div className={desktop ? "flex min-h-0 flex-1 flex-col" : ""}>
+    <div data-service={s.id} className={desktop ? "flex min-h-0 flex-1 flex-col" : ""}>
       {!desktop && (
         <a
           className="-ml-1.5 inline-flex min-h-11 items-center gap-0.5 px-1.5 text-[17px] text-accent no-underline"

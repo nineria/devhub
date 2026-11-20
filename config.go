@@ -45,6 +45,8 @@ type Service struct {
 	Port      int        `json:"port,omitempty"` // the port a process listens on; the hub waits for it to be free
 	Check     string     `json:"check,omitempty"`
 	Interval  int        `json:"interval,omitempty"`
+	FailEvery int        `json:"failInterval,omitempty"` // seconds before the retry after a check fails; 0 keeps interval
+	SlowEvery int        `json:"slowInterval,omitempty"` // seconds between checks once the retry failed too; 0 keeps failInterval
 	Heartbeat *Heartbeat `json:"heartbeat,omitempty"`
 	Buttons   []Button   `json:"buttons,omitempty"`
 	Links     []Link     `json:"links,omitempty"`
@@ -106,6 +108,9 @@ func validate(services []Service) error {
 			}
 			if s.Interval < 0 {
 				return fmt.Errorf("%s: interval can't be negative", s.ID)
+			}
+			if s.FailEvery < 0 || s.SlowEvery < 0 {
+				return fmt.Errorf("%s: failInterval and slowInterval can't be negative", s.ID)
 			}
 		default:
 			return fmt.Errorf("%s: unknown kind %q", s.ID, s.Kind)
