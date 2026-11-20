@@ -187,6 +187,8 @@ Load it with `launchctl load ~/Library/LaunchAgents/dev.ostler.plist`. Ostler ad
 
 ## How it works
 
+- Only one Ostler can run at a time (a lock file in the config folder). A second one exits at once instead
+  of starting every service twice and fighting over their ports.
 - Each service runs in its own process group; stopping signals the group, then kills it after 8 seconds.
 - File watching polls the watched folders every 2 seconds instead of using one file descriptor per file,
   so large `node_modules` trees can't exhaust the limit. Changes are debounced until the files settle.
