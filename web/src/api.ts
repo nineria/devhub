@@ -104,6 +104,8 @@ export type ServiceConfig = {
   port?: number;
   check?: string;
   interval?: number;
+  failInterval?: number;
+  slowInterval?: number;
   heartbeat?: { url: string; method?: string; tokenEnv?: string };
   buttons?: { id: string; label: string; cmd: string; confirm?: string }[];
   links?: { label: string; path: string }[];

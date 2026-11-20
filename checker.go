@@ -27,6 +27,7 @@ type Checker struct {
 
 	mu      sync.Mutex
 	state   string // unknown, ok, failing, info
+	fails   int    // checks failed in a row
 	detail  string
 	since   time.Time
 	last    time.Time
@@ -89,8 +90,8 @@ func (c *Checker) loop() {
 		}
 		var wait <-chan time.Time
 		var timer *time.Timer
-		if c.svc.Kind == "check" && c.svc.Interval > 0 {
-			timer = time.NewTimer(time.Duration(c.svc.Interval) * time.Second)
+		if d := c.wait(); d > 0 {
+			timer = time.NewTimer(d)
 			wait = timer.C
 		}
 		select {
@@ -102,6 +103,25 @@ func (c *Checker) loop() {
 			timer.Stop()
 		}
 	}
+}
+
+// wait is the pause before the next check. While a check fails it backs off for a machine that is switched
+// off now and then: failInterval after the first failure, slowInterval once the retry failed too. 0 means no repeat.
+func (c *Checker) wait() time.Duration {
+	if c.svc.Kind != "check" || c.svc.Interval <= 0 {
+		return 0
+	}
+	secs := c.svc.Interval
+	c.mu.Lock()
+	fails := c.fails
+	c.mu.Unlock()
+	if fails >= 1 && c.svc.FailEvery > secs {
+		secs = c.svc.FailEvery
+	}
+	if fails >= 2 && c.svc.SlowEvery > secs {
+		secs = c.svc.SlowEvery
+	}
+	return time.Duration(secs) * time.Second
 }
 
 func (c *Checker) recheck() {
@@ -155,6 +175,11 @@ func (c *Checker) runCheck() {
 	}
 	c.mu.Lock()
 	changed := c.state != state
+	if state == "failing" {
+		c.fails++
+	} else {
+		c.fails = 0
+	}
 	first := c.last.IsZero()
 	if changed {
 		c.since = time.Now()

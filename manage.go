@@ -157,12 +157,12 @@ func normalize(s Service) Service {
 	}
 	s.Watch = cleanList(s.Watch)
 	if s.Kind == "process" {
-		s.Check, s.Interval, s.Heartbeat = "", 0, nil
+		s.Check, s.Interval, s.FailEvery, s.SlowEvery, s.Heartbeat = "", 0, 0, 0, nil
 	} else {
 		s.Build, s.Run, s.Watch, s.Ready, s.Port = "", "", nil, "", 0
 	}
 	if s.Kind == "task" {
-		s.Interval, s.Heartbeat = 0, nil
+		s.Interval, s.FailEvery, s.SlowEvery, s.Heartbeat = 0, 0, 0, nil
 	}
 	if s.Heartbeat != nil {
 		s.Heartbeat.URL, s.Heartbeat.Method, s.Heartbeat.TokenEnv =

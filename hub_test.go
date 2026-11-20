@@ -162,6 +162,30 @@ func TestCheckerStateHeartbeatFreeAndButtons(t *testing.T) {
 	}
 }
 
+func TestCheckerWaitsLongerWhileFailing(t *testing.T) {
+	c := newChecker(Service{ID: "c", Kind: "check", Check: "true", Interval: 60, FailEvery: 600}, t.TempDir(), childEnv())
+	defer c.Close()
+	if d := c.wait(); d != 60*time.Second {
+		t.Fatalf("healthy wait: %v", d)
+	}
+	c.fails = 1
+	if d := c.wait(); d != 600*time.Second {
+		t.Fatalf("first failure wait: %v", d)
+	}
+	c.fails = 2
+	if d := c.wait(); d != 600*time.Second {
+		t.Fatalf("no slowInterval keeps failInterval: %v", d)
+	}
+	c.svc.SlowEvery = 21600
+	if d := c.wait(); d != 6*time.Hour {
+		t.Fatalf("second failure wait: %v", d)
+	}
+	c.svc.Interval = 0
+	if d := c.wait(); d != 0 {
+		t.Fatalf("interval 0 must not repeat: %v", d)
+	}
+}
+
 func TestConfigRejectsBadServices(t *testing.T) {
 	dir := t.TempDir()
 	p := filepath.Join(dir, "c.json")

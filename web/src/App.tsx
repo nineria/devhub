@@ -10,6 +10,7 @@ import {
 } from "@ui-sdk/react/alert-dialog";
 import { Tabs, TabsList, TabsPanel, TabsTab } from "@ui-sdk/react/tabs";
 import { Toast, ToastAction, ToastDescription, ToastRegion, ToastTitle } from "@ui-sdk/react/toast";
+import { ContextMenu } from "./ContextMenu";
 import { ServiceEditor } from "./Editor";
 import { AllLogs, Detail, Filters, Health, ServiceList, type Only } from "./Services";
 import { Button } from "@ui-sdk/react/button";
@@ -151,6 +152,7 @@ export function App() {
   const wrap = (page: React.ReactNode) => (
     <EditorContext.Provider value={(id, group) => setEditing({ id, group })}>
       {page}
+      <ContextMenu services={services} />
       {canEdit && (
         <ServiceEditor
           target={editing}

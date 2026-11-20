@@ -35,6 +35,8 @@ type Draft = {
   port: string;
   check: string;
   interval: string;
+  failEvery: string;
+  slowEvery: string;
   hbUrl: string;
   hbMethod: string;
   hbToken: string;
@@ -56,6 +58,8 @@ const blank: Draft = {
   port: "",
   check: "",
   interval: "30",
+  failEvery: "0",
+  slowEvery: "0",
   hbUrl: "",
   hbMethod: "",
   hbToken: "",
@@ -78,6 +82,8 @@ function toDraft(c: ServiceConfig): Draft {
     port: c.port ? String(c.port) : "",
     check: c.check ?? "",
     interval: String(c.interval ?? 30),
+    failEvery: String(c.failInterval ?? 0),
+    slowEvery: String(c.slowInterval ?? 0),
     hbUrl: c.heartbeat?.url ?? "",
     hbMethod: c.heartbeat?.method ?? "",
     hbToken: c.heartbeat?.tokenEnv ?? "",
@@ -101,6 +107,8 @@ function toConfig(d: Draft): ServiceConfig {
     port: Math.max(0, Math.round(Number(d.port) || 0)),
     check: d.check,
     interval: Math.max(0, Math.round(Number(d.interval) || 0)),
+    failInterval: Math.max(0, Math.round(Number(d.failEvery) || 0)),
+    slowInterval: Math.max(0, Math.round(Number(d.slowEvery) || 0)),
     heartbeat: d.hbUrl.trim()
       ? { url: d.hbUrl, method: d.hbMethod, tokenEnv: d.hbToken }
       : undefined,
@@ -379,6 +387,20 @@ function Form({
                 value={d.interval}
                 onChange={(v) => set("interval", v)}
                 hint="0 checks once."
+              />
+              <Text
+                label="Retry after a failure (seconds)"
+                type="number"
+                value={d.failEvery}
+                onChange={(v) => set("failEvery", v)}
+                hint="Wait before the retry once a check fails, for a machine that is off now and then. 0 keeps the rate above."
+              />
+              <Text
+                label="Every after the retry fails (seconds)"
+                type="number"
+                value={d.slowEvery}
+                onChange={(v) => set("slowEvery", v)}
+                hint="If the retry fails too, check this rarely (21600 is 6 hours). 0 keeps the retry rate."
               />
               <Text
                 label="Heartbeat URL"
