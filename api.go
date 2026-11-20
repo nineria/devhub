@@ -260,6 +260,9 @@ func (h *Hub) routes(ui fs.FS) http.Handler {
 	}))
 	mux.HandleFunc("POST /api/services/{id}/buttons/{button}", needsHeader(func(w http.ResponseWriter, r *http.Request) {
 		act(w, r, func(it item) (string, error) {
+			if it.runner != nil {
+				return it.runner.RunButton(r.PathValue("button"))
+			}
 			if it.checker == nil {
 				return "", errors.New("this service has no buttons")
 			}

@@ -3,11 +3,13 @@ package main
 import (
 	"bufio"
 	"context"
+	"errors"
 	"io"
 	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"sync"
 	"syscall"
 	"time"
@@ -36,6 +38,7 @@ type Runner struct {
 	exited     chan struct{}
 	wake       chan struct{}
 	buildMu    sync.Mutex
+	runBtn     sync.Mutex
 	disabled   bool
 	build      *BuildView // the last build, if there has been one
 	blocker    *Blocker   // set while another process holds the service's port
@@ -567,3 +570,38 @@ func viewButtons(bs []Button) []ButtonView {
 }
 
 func (r *Runner) Logs() *LogBuf { return r.log }
+
+// RunButton runs a button's command from the config and returns its last line of output.
+func (r *Runner) RunButton(id string) (string, error) {
+	var b *Button
+	for i := range r.svc.Buttons {
+		if r.svc.Buttons[i].ID == id {
+			b = &r.svc.Buttons[i]
+		}
+	}
+	if b == nil {
+		return "", errors.New("unknown action")
+	}
+	if !r.runBtn.TryLock() {
+		return "", errBusy
+	}
+	defer r.runBtn.Unlock()
+	r.log.Note("%s", b.Label)
+	ctx, cancel := context.WithTimeout(r.ctx, 150*time.Second)
+	defer cancel()
+	cmd := exec.CommandContext(ctx, "sh", "-c", b.Cmd)
+	cmd.Dir, cmd.Env = r.dir, r.env
+	raw, err := cmd.CombinedOutput()
+	out := string(raw)
+	for _, line := range strings.Split(strings.TrimRight(out, "\n"), "\n") {
+		if strings.TrimSpace(line) != "" {
+			r.log.Add("run", line)
+		}
+	}
+	if err != nil {
+		r.log.Note("%s failed: %v", b.Label, err)
+		return lastLine(out), err
+	}
+	r.log.Note("%s done", b.Label)
+	return lastLine(out), nil
+}
